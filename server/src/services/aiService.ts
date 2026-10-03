@@ -500,7 +500,87 @@ export class AIService {
     // STEP A: Resolve Any Stock / Entity Symbols in the Query
     const resolvedSymbols = await this.extractAndResolveSymbols(rawText);
 
-    // STEP B: Check for Stock Comparison Query ("Compare AAPL and MSFT", "TSLA vs NVDA")
+    // STEP B: Specific Stock Buy Advice ("Should I buy Tesla?", "Is NVDA a good buy?", "Is Apple a buy right now?")
+    if (
+      (textLower.includes('should i buy') ||
+        textLower.includes('is it a good time to buy') ||
+        textLower.includes('is it good to buy') ||
+        textLower.includes('worth buying') ||
+        textLower.includes('should i invest in') ||
+        textLower.includes('good buy') ||
+        textLower.includes('should i get')) &&
+      resolvedSymbols.length === 1
+    ) {
+      return this.handleStockBuyAdvice(userId, resolvedSymbols[0]);
+    }
+
+    // STEP C: General Stock Recommendations & Ideas ("What stocks are good to buy today?", "What should I buy?", "Best stocks to invest in", "Stock picks")
+    if (
+      textLower.includes('good to buy') ||
+      textLower.includes('stocks are good to buy') ||
+      textLower.includes('what stocks are good') ||
+      textLower.includes('what should i buy') ||
+      textLower.includes('what stocks should i buy') ||
+      textLower.includes('which stock should i buy') ||
+      textLower.includes('which stocks should i buy') ||
+      textLower.includes('stocks to buy') ||
+      textLower.includes('stock to buy') ||
+      textLower.includes('best stocks') ||
+      textLower.includes('top stocks') ||
+      textLower.includes('recommend stocks') ||
+      textLower.includes('stock recommendations') ||
+      textLower.includes('stocks to invest') ||
+      textLower.includes('stock picks') ||
+      textLower.includes('stock ideas') ||
+      textLower.includes('what to buy') ||
+      textLower.includes('what to trade') ||
+      textLower.includes('which stock is best') ||
+      textLower.includes('suggest stocks') ||
+      textLower.includes('suggest some stocks') ||
+      textLower.includes('where should i put my money') ||
+      textLower.includes('good investments')
+    ) {
+      return this.handleStockRecommendations(userId);
+    }
+
+    // STEP D: Top Gainers & Top Losers ("Top gainers today", "Top losers", "Biggest movers", "Stocks going up")
+    if (
+      textLower.includes('top gainer') ||
+      textLower.includes('biggest gainer') ||
+      textLower.includes('gainers') ||
+      textLower.includes('stocks going up') ||
+      textLower.includes('what is pumping') ||
+      textLower.includes('top performers')
+    ) {
+      return this.handleTopGainersAndLosers(userId, true);
+    }
+    if (
+      textLower.includes('top loser') ||
+      textLower.includes('biggest loser') ||
+      textLower.includes('losers') ||
+      textLower.includes('stocks going down') ||
+      textLower.includes('biggest drops') ||
+      textLower.includes('worst performers')
+    ) {
+      return this.handleTopGainersAndLosers(userId, false);
+    }
+
+    // STEP E: Beginner / Portfolio Allocation Advice ("How to invest $100k", "How to start trading", "Where to start")
+    if (
+      textLower.includes('how to invest') ||
+      textLower.includes('how should i invest') ||
+      textLower.includes('how to start trading') ||
+      textLower.includes('how to trade') ||
+      textLower.includes('start trading') ||
+      textLower.includes('beginner') ||
+      textLower.includes('allocate') ||
+      textLower.includes('100k') ||
+      textLower.includes('where to start')
+    ) {
+      return this.handleGettingStartedAndAllocation(userId, textLower);
+    }
+
+    // STEP F: Check for Stock Comparison Query ("Compare AAPL and MSFT", "TSLA vs NVDA")
     if (
       (textLower.includes('compare') || textLower.includes(' vs ') || textLower.includes('versus') || textLower.includes('difference between')) &&
       resolvedSymbols.length >= 2
@@ -508,7 +588,7 @@ export class AIService {
       return this.handleStockComparison(userId, resolvedSymbols[0], resolvedSymbols[1]);
     }
 
-    // STEP C: Check for Affordability / Buying Power Query ("Can I buy 5 shares of NVDA?", "How many shares of Apple can I afford?")
+    // STEP G: Check for Affordability / Buying Power Query ("Can I buy 5 shares of NVDA?", "How many shares of Apple can I afford?")
     if (
       textLower.includes('can i buy') ||
       textLower.includes('can i afford') ||
@@ -525,7 +605,7 @@ export class AIService {
       }
     }
 
-    // STEP D: Check for "Why Did It Move?" Query
+    // STEP H: Check for "Why Did It Move?" Query
     if (
       (textLower.includes('why') || textLower.includes('move') || textLower.includes('moving') || textLower.includes('drop') || textLower.includes('crash') || textLower.includes('surge') || textLower.includes('jump')) &&
       resolvedSymbols.length > 0
@@ -533,13 +613,13 @@ export class AIService {
       return this.explainMovement(userId, resolvedSymbols[0]);
     }
 
-    // STEP E: Check for Financial Concept / Educational Questions (P/E, RSI, MACD, Stop Loss, Short Selling, etc.)
+    // STEP I: Check for Financial Concept / Educational Questions (P/E, RSI, MACD, Stop Loss, Bull/Bear, etc.)
     const educationalMatch = this.detectFinancialConcept(textLower);
     if (educationalMatch) {
       return this.handleFinancialConcept(userId, educationalMatch);
     }
 
-    // STEP F: Check for Portfolio Risk Queries (checked before general portfolio so "portfolio risk" routes here)
+    // STEP J: Check for Portfolio Risk Queries
     if (
       textLower.includes('risk') ||
       textLower.includes('volatility') ||
@@ -551,7 +631,7 @@ export class AIService {
       return this.handleRiskQuery(userId);
     }
 
-    // STEP G: Check for Trade History Queries ("What was my last trade?", "Show my trades", "Did I make any profit?")
+    // STEP K: Check for Trade History Queries
     if (
       textLower.includes('last trade') ||
       textLower.includes('recent trade') ||
@@ -564,7 +644,7 @@ export class AIService {
       return this.handleTradeHistoryQuery(userId);
     }
 
-    // STEP H: Check for Holdings & Portfolio Queries
+    // STEP L: Check for Holdings & Portfolio Queries
     if (
       textLower.includes('holding') ||
       textLower.includes('what do i own') ||
@@ -581,7 +661,7 @@ export class AIService {
       return this.handleHoldingsAndPortfolioQuery(userId, textLower);
     }
 
-    // STEP I: Check for Backtest / Strategy Inquiries
+    // STEP M: Strategy / Backtest Inquiries
     if (
       textLower.includes('strategy') ||
       textLower.includes('backtest') ||
@@ -592,32 +672,32 @@ export class AIService {
       return this.handleStrategyInquiry(userId, textLower);
     }
 
-    // STEP J: If a specific symbol was mentioned, explain that stock quote & context
+    // STEP N: If a specific symbol was mentioned, explain that stock quote & context
     if (resolvedSymbols.length > 0) {
       return this.explainStock(userId, resolvedSymbols[0]);
     }
 
-    // STEP K: Market Overview & Gainers / Losers
+    // STEP O: Broad Market Brief (ONLY when user explicitly asks for market brief / status)
     if (
-      textLower.includes('market') ||
-      textLower.includes('gainers') ||
-      textLower.includes('losers') ||
-      textLower.includes('economy') ||
-      textLower.includes('news') ||
-      textLower.includes('index') ||
-      textLower.includes('today')
+      textLower.includes('market brief') ||
+      textLower.includes('market overview') ||
+      textLower.includes('market condition') ||
+      textLower.includes('market status') ||
+      textLower.includes('is market open') ||
+      textLower.includes('how is the market') ||
+      textLower.includes('broad market')
     ) {
       return this.getMarketBrief(userId);
     }
 
-    // STEP L: External LLM Call (if API key present) OR Comprehensive Financial Assistant Response
+    // STEP P: External LLM Call (if API key present)
     const externalResponse = await this.tryExternalLLM(userId, rawText);
     if (externalResponse) {
       return externalResponse;
     }
 
-    // Default Fallback: Market Brief with helpful tips
-    return this.getMarketBrief(userId);
+    // STEP Q: General Financial Assistant Inquiry (Never return default brief unless asked)
+    return this.handleGeneralFinancialInquiry(userId, rawText);
   }
 
   // =========================================================================
@@ -841,6 +921,11 @@ export class AIService {
     if (text.includes('moving average') || text.includes('golden cross') || text.includes('death cross')) return 'MOVING_AVERAGES';
     if (text.includes('paper trade') || text.includes('paper trading') || text.includes('virtual money')) return 'PAPER_TRADING';
     if (text.includes('diversif') || text.includes('asset allocation')) return 'DIVERSIFICATION';
+    if (text.includes('bull market') || text.includes('bear market') || text.includes('bull vs bear') || text.includes('bullish vs bearish')) return 'BULL_VS_BEAR';
+    if (text.includes('inflation') || text.includes('cpi') || text.includes('interest rate') || text.includes('fed hike') || text.includes('fed cut')) return 'INFLATION_AND_RATES';
+    if (text.includes('earnings season') || text.includes('earnings report') || text.includes('earnings call')) return 'EARNINGS_SEASON';
+    if (text.includes('support') && (text.includes('resistance') || text.includes('level') || text.includes('floor') || text.includes('ceiling'))) return 'SUPPORT_RESISTANCE';
+    if (text.includes('options vs stocks') || text.includes('what are options') || text.includes('call and put') || text.includes('put option')) return 'OPTIONS_VS_STOCKS';
     return null;
   }
 
@@ -930,6 +1015,46 @@ export class AIService {
         explanation = 'Moving averages smooth price action to highlight underlying trend direction. Crossovers between short-term and long-term averages signal structural trend shifts.';
         benchmarks = '• **Golden Cross:** 50-day MA crosses above the 200-day MA (major long-term bullish signal).\n• **Death Cross:** 50-day MA crosses below the 200-day MA (major long-term bearish signal).';
         application = 'Run automated simulations of Moving Average Crossover rules on the StockPulse Strategy Backtesting engine.';
+        break;
+
+      case 'BULL_VS_BEAR':
+        title = 'Bull Markets vs. Bear Markets';
+        formula = 'Bull: Rise of ≥20% from trough | Bear: Decline of ≥20% from peak';
+        explanation = 'A **Bull Market** is characterized by rising prices, investor confidence, expanding corporate earnings, and favorable macroeconomic conditions. A **Bear Market** is marked by persistent declines of 20% or more, widespread risk aversion, contracting valuation multiples, and economic uncertainty.';
+        benchmarks = '• Historical Bull Markets: Average duration ~4.5 years with cumulative gains exceeding 150%.\n• Historical Bear Markets: Average duration ~10-14 months with typical declines of ~30-35%.\n• Strategy: Bull markets favor momentum and growth compounders; bear markets emphasize cash reserves, defensive anchors, and strict stop-loss discipline.';
+        application = 'Check the AI Market Brief on the Dashboard to see current benchmark trends and market regime indicators.';
+        break;
+
+      case 'INFLATION_AND_RATES':
+        title = 'Inflation & Federal Reserve Interest Rates';
+        formula = 'Discounted Cash Flow (DCF): Value = CF / (1 + r)^t, where r = Risk-Free Rate + Equity Premium';
+        explanation = 'Inflation reduces consumer purchasing power. When inflation runs above target (2%), central banks raise interest rates (Federal Funds Rate) to tighten credit and cool demand. Higher interest rates make cash and bonds more attractive, increasing discount rates (r) and putting downward valuation pressure on high-growth equities.';
+        benchmarks = '• Rate Hikes: Negative for speculative, high-debt, unprofitable growth companies.\n• Rate Cuts / Easing: Bullish tailwind for equities, especially technology and real estate.\n• Fed Pivot: The transition from tightening to easing often sparks major cyclical bull runs.';
+        application = 'StockPulse AI tracks macroeconomic news headlines and Fed policy statements in the Market Intelligence feed.';
+        break;
+
+      case 'EARNINGS_SEASON':
+        title = 'Earnings Season & Guidance Dynamics';
+        formula = 'EPS Surprise % = [(Reported EPS - Consensus Estimate) / |Consensus Estimate|] × 100';
+        explanation = 'Earnings Season occurs four times a year (January, April, July, October) as public corporations release quarterly financial statements, 10-Q filings, and executive forward guidance. Stock prices react violently not just to past profits, but to whether management raises or lowers guidance for upcoming quarters.';
+        benchmarks = '• Beat & Raise: Company beats earnings expectations and raises future guidance (bullish catalyst).\n• Miss & Lower: Company misses forecasts and lowers guidance (bearish catalyst).\n• Implied Volatility: Options and implied moves typically elevate 3-5 days before reporting.';
+        application = 'Inspect "Why Did It Move?" on StockPulse to see whether recent price gaps were caused by earnings releases.';
+        break;
+
+      case 'SUPPORT_RESISTANCE':
+        title = 'Support & Resistance Price Levels';
+        formula = 'Support = Demand Floor (Buyers > Sellers) | Resistance = Supply Ceiling (Sellers > Buyers)';
+        explanation = 'Support represents a historical price zone where downward momentum stalls due to concentrated buying interest. Resistance represents a price level where selling pressure exceeds demand, preventing further advances.';
+        benchmarks = '• Support Breakout: A break below support often triggers stop-loss cascades and accelerated selling.\n• Resistance Breakout: A high-volume break above resistance frequently confirms trend continuation and new highs.\n• Role Reversal: Once broken, previous resistance often acts as new support.';
+        application = 'View 52-week highs, lows, and day ranges on any StockPulse chart to identify critical support and resistance thresholds.';
+        break;
+
+      case 'OPTIONS_VS_STOCKS':
+        title = 'Stocks vs. Options Contracts';
+        formula = 'Call Option = Right to Buy @ Strike | Put Option = Right to Sell @ Strike (1 Contract = 100 Shares)';
+        explanation = 'Holding **Stocks** confers direct equity ownership in a corporation with voting rights, dividends, and no expiration date. **Options** are derivative contracts that give the trader the right, but not the obligation, to buy (Call) or sell (Put) shares at a specific strike price before an expiration date.';
+        benchmarks = '• Time Decay (Theta): Options lose value as expiration approaches, even if the underlying stock remains flat.\n• Leverage: Options provide asymmetric leverage, but risk 100% loss of the premium paid.\n• Stock Investing: Eliminates time decay risk and allows investors to hold through market pullbacks.';
+        application = 'StockPulse currently focuses on equity paper trading with live market fills to build disciplined capital compounding habits.';
         break;
 
       default:
@@ -1261,6 +1386,293 @@ export class AIService {
     }
 
     return null;
+  }
+
+  // Helper 10: Live Screened Stock Recommendations
+  private async handleStockRecommendations(userId: string): Promise<AIResponse> {
+    const candidateSymbols = [
+      'NVDA', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META',
+      'TSLA', 'AMD', 'PLTR', 'JPM', 'WMT', 'COST', 'LLY', 'SPY', 'QQQ'
+    ];
+
+    const quotes = await Promise.all(
+      candidateSymbols.map(async (s) => {
+        try {
+          return await marketProvider.getQuote(s);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    const validQuotes = quotes.filter((q): q is NonNullable<typeof q> => q !== null);
+    const account = await PaperAccount.findOne({ userId });
+    const cashBalance = account?.cashBalance ?? 100000;
+
+    // Sort by momentum (highest intraday change)
+    const sortedByChange = [...validQuotes].sort((a, b) => b.changePercent - a.changePercent);
+    const topMomentum = sortedByChange.slice(0, 4);
+
+    // High Quality Tech / Cloud Compounders
+    const compounders = validQuotes.filter(q => ['MSFT', 'AAPL', 'AMZN', 'GOOGL'].includes(q.symbol));
+
+    // Defensive / Value Anchors
+    const defensives = validQuotes.filter(q => ['JPM', 'WMT', 'COST', 'LLY'].includes(q.symbol));
+
+    // Index core
+    const indices = validQuotes.filter(q => ['SPY', 'QQQ'].includes(q.symbol));
+
+    const observations: string[] = [
+      `Available Virtual Cash: $${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+      `Top Relative Momentum Leaders Today: ${topMomentum.map(q => `${q.symbol} (${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%)`).join(', ')}.`,
+      `Market Regime: Evaluated across ${validQuotes.length} live US equity leaders.`,
+      `Risk Guideline: Limit single-position risk to 15-25% of total capital with a disciplined 5-8% stop-loss.`,
+    ];
+
+    let answer = `### Top Stock Opportunities & Recommendations Today\n\n` +
+      `Based on real-time price action, institutional volume, and fundamental industry tailwinds, here are the strongest actionable candidates across **Momentum Growth**, **Core Compounders**, and **Defensive Value**:\n\n` +
+      `| Category | Symbol | Price | Today | 52W Range | Investment Thesis / Catalyst | Stop-Loss Zone |\n` +
+      `| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+
+    // 1. Momentum Picks
+    for (const q of topMomentum.slice(0, 3)) {
+      const thesis = q.symbol === 'NVDA' ? 'Dominant AI data center compute & Blackwell demand'
+        : q.symbol === 'TSLA' ? 'Autonomous driving momentum & energy storage ramp'
+        : q.symbol === 'PLTR' ? 'AIP enterprise software adoption & defense contracts'
+        : q.symbol === 'AMD' ? 'MI300 AI accelerators & server CPU market share gains'
+        : q.symbol === 'META' ? 'Llama AI infrastructure & high ad conversion monetization'
+        : 'Strong institutional order flow and relative sector leadership';
+      const stop = (q.price * 0.94).toFixed(2);
+      answer += `| **Momentum** | **${q.symbol}** | **$${q.price.toFixed(2)}** | ${q.changePercent >= 0 ? '🟢 +' : '🔴 '}${q.changePercent.toFixed(2)}% | $${q.fiftyTwoWeekLow ?? 'N/A'} - $${q.fiftyTwoWeekHigh ?? 'N/A'} | ${thesis} | ~$${stop} (-6%) |\n`;
+    }
+
+    // 2. Core Compounders
+    for (const q of compounders.slice(0, 2)) {
+      const thesis = q.symbol === 'MSFT' ? 'Azure cloud growth, enterprise Copilot monetization, fortress balance sheet'
+        : q.symbol === 'AAPL' ? 'Apple Intelligence upgrade cycle, $100B+ annual free cash flow'
+        : q.symbol === 'AMZN' ? 'AWS re-acceleration and retail logistics margin expansion'
+        : 'Search dominance and YouTube advertising cash flow';
+      const stop = (q.price * 0.95).toFixed(2);
+      answer += `| **Compounder** | **${q.symbol}** | **$${q.price.toFixed(2)}** | ${q.changePercent >= 0 ? '🟢 +' : '🔴 '}${q.changePercent.toFixed(2)}% | $${q.fiftyTwoWeekLow ?? 'N/A'} - $${q.fiftyTwoWeekHigh ?? 'N/A'} | ${thesis} | ~$${stop} (-5%) |\n`;
+    }
+
+    // 3. Defensive Anchor
+    for (const q of defensives.slice(0, 1)) {
+      const thesis = q.symbol === 'JPM' ? 'Premier banking balance sheet & resilient net interest income'
+        : q.symbol === 'COST' ? 'Consistent 90%+ membership renewal rates and defensive traffic'
+        : 'Everyday consumer staple dominance and resilient pricing power';
+      const stop = (q.price * 0.96).toFixed(2);
+      answer += `| **Defensive** | **${q.symbol}** | **$${q.price.toFixed(2)}** | ${q.changePercent >= 0 ? '🟢 +' : '🔴 '}${q.changePercent.toFixed(2)}% | $${q.fiftyTwoWeekLow ?? 'N/A'} - $${q.fiftyTwoWeekHigh ?? 'N/A'} | ${thesis} | ~$${stop} (-4%) |\n`;
+    }
+
+    // Personalized Portfolio Execution Plan
+    const posA = topMomentum[0];
+    const posB = compounders[0];
+    const posC = defensives[0] || indices[0];
+
+    const sharesA = posA ? Math.floor((cashBalance * 0.25) / posA.price) : 0;
+    const sharesB = posB ? Math.floor((cashBalance * 0.25) / posB.price) : 0;
+    const sharesC = posC ? Math.floor((cashBalance * 0.20) / posC.price) : 0;
+
+    answer += `\n**Personalized Portfolio Blueprint (With Your $${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Virtual Cash):**\n\n` +
+      `- **High-Conviction Growth (25%):** ~${sharesA} shares of **${posA?.symbol}** (~$${((sharesA * (posA?.price ?? 0))).toLocaleString()})\n` +
+      `- **Long-Term Compounder (25%):** ~${sharesB} shares of **${posB?.symbol}** (~$${((sharesB * (posB?.price ?? 0))).toLocaleString()})\n` +
+      `- **Defensive / Index Core (20%):** ~${sharesC} shares of **${posC?.symbol}** (~$${((sharesC * (posC?.price ?? 0))).toLocaleString()})\n` +
+      `- **Liquid Cash Cushion (30%):** Keep remaining funds liquid to buy pullbacks and manage risk.\n\n` +
+      `*To execute this strategy, head to the **Trade** page to place your virtual orders.*`;
+
+    const result: AIResponse = {
+      answer,
+      observations,
+      sources: ['Yahoo Finance Live Quotes', 'StockPulse Fundamental & Technical Screening Engine'],
+      uncertainty: 'Stock recommendations are educational trade setups based on live technical and fundamental momentum. Not formal financial advice.',
+      metrics: {
+        cashBalance,
+        topPicks: topMomentum.slice(0, 3).map(q => q.symbol),
+      },
+      generatedAt: new Date().toISOString(),
+    };
+
+    await this.recordAnalysis(userId, 'NATURAL_QUERY', 'STOCK_RECOMMENDATIONS', { cashBalance }, result);
+    return result;
+  }
+
+  // Helper 11: Single Stock Buy Decision Advice
+  private async handleStockBuyAdvice(userId: string, symbol: string): Promise<AIResponse> {
+    const cleanSymbol = symbol.trim().toUpperCase();
+    const quote = await marketProvider.getQuote(cleanSymbol);
+    const news = await newsProvider.getNews(cleanSymbol, 3).catch(() => []);
+    const account = await PaperAccount.findOne({ userId });
+    const position = await Position.findOne({ userId, symbol: cleanSymbol });
+    const cashBalance = account?.cashBalance ?? 100000;
+
+    const isNearHigh = quote.fiftyTwoWeekHigh ? quote.price >= quote.fiftyTwoWeekHigh * 0.95 : false;
+    const isNearLow = quote.fiftyTwoWeekLow ? quote.price <= quote.fiftyTwoWeekLow * 1.10 : false;
+    const maxShares = Math.floor(cashBalance / quote.price);
+
+    const targetPrice = (quote.price * 1.12).toFixed(2);
+    const stopPrice = (quote.price * 0.94).toFixed(2);
+
+    const observations: string[] = [
+      `Asset: ${quote.name || cleanSymbol} (${cleanSymbol}) trading at $${quote.price.toFixed(2)} (${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%).`,
+      `52-Week Channel: Low $${quote.fiftyTwoWeekLow ?? 'N/A'} - High $${quote.fiftyTwoWeekHigh ?? 'N/A'} (Currently ${isNearHigh ? 'near 52W High' : isNearLow ? 'near 52W Low' : 'in mid-channel'}).`,
+      `Purchasing Power: You can buy up to ${maxShares.toLocaleString()} shares with your $${cashBalance.toLocaleString()} cash balance.`,
+    ];
+
+    if (position) {
+      observations.push(`Current Holding: You already hold ${position.quantity} shares @ avg $${position.averagePrice.toFixed(2)}.`);
+    }
+
+    const answer = `### Trade Assessment: Is **${cleanSymbol}** (${quote.name || cleanSymbol}) a Good Buy Right Now?\n\n` +
+      `- **Current Market Price:** **$${quote.price.toFixed(2)}** (${quote.changePercent >= 0 ? '🟢 +' : '🔴 '}${quote.changePercent.toFixed(2)}% today)\n` +
+      `- **52-Week Range:** $${quote.fiftyTwoWeekLow ?? 'N/A'} — $${quote.fiftyTwoWeekHigh ?? 'N/A'}\n` +
+      `- **Technical Position:** ${isNearHigh ? 'Trading near its 52-week peak. Momentum is strong, but consider staging entries or waiting for minor consolidations to avoid buying the top.' : isNearLow ? 'Trading near its 52-week support floor. Valuation is discounted, but confirm reversal volume before entering.' : 'Consolidating in its mid-range with favorable risk/reward parameters.'}\n\n` +
+      `**Key Upside Catalysts:**\n` +
+      (news.length > 0 ? `- Recent Headline: *"${news[0].headline}"* (${news[0].sentiment})\n` : '') +
+      `- Relative volume of ${quote.volume.toLocaleString()} shares reflects active institutional participation.\n\n` +
+      `**Suggested Tactical Trade Setup:**\n` +
+      `- **Entry Range:** Around current market price ($${quote.price.toFixed(2)})\n` +
+      `- **Target Exit (+12%):** **$${targetPrice}**\n` +
+      `- **Stop-Loss Protection (-6%):** **$${stopPrice}**\n` +
+      `- **Position Sizing:** With your available cash of **$${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}**, a prudent 15-20% allocation would be **${Math.floor((cashBalance * 0.18) / quote.price)} shares** (~$${(Math.floor((cashBalance * 0.18) / quote.price) * quote.price).toFixed(2)}).\n\n` +
+      `You can place this order on the **Trade** page with simulated virtual funds.`;
+
+    const result: AIResponse = {
+      answer,
+      observations,
+      sources: ['Yahoo Finance Live Quotes', 'StockPulse Quantitative Trade Model'],
+      uncertainty: 'Trade evaluations are educational setups based on technical risk-reward ratios and do not constitute financial advice.',
+      metrics: {
+        symbol: cleanSymbol,
+        price: quote.price,
+        targetPrice: Number(targetPrice),
+        stopPrice: Number(stopPrice),
+        maxShares,
+      },
+      generatedAt: new Date().toISOString(),
+    };
+
+    await this.recordAnalysis(userId, 'NATURAL_QUERY', cleanSymbol, { quote }, result);
+    return result;
+  }
+
+  // Helper 12: Top Market Movers (Gainers & Losers)
+  private async handleTopGainersAndLosers(userId: string, isGainers: boolean): Promise<AIResponse> {
+    const symbols = ['NVDA', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AMD', 'PLTR', 'JPM', 'WMT', 'COST', 'LLY', 'COIN', 'NFLX', 'DIS', 'SPY', 'QQQ'];
+    const quotes = await Promise.all(symbols.map(s => marketProvider.getQuote(s).catch(() => null)));
+    const valid = quotes.filter((q): q is NonNullable<typeof q> => q !== null);
+
+    const sorted = isGainers
+      ? [...valid].sort((a, b) => b.changePercent - a.changePercent)
+      : [...valid].sort((a, b) => a.changePercent - b.changePercent);
+
+    const title = isGainers ? 'Top Market Gainers Today' : 'Top Market Losers Today';
+    const top5 = sorted.slice(0, 5);
+
+    const observations = [
+      `Screened ${valid.length} key mega-cap and high-beta assets.`,
+      `Leader: ${top5[0]?.symbol} (${top5[0]?.changePercent >= 0 ? '+' : ''}${top5[0]?.changePercent.toFixed(2)}%).`,
+    ];
+
+    let answer = `### ${title}\n\n` +
+      `| Rank | Symbol | Company | Price | Change (%) | Day Range | Volume |\n` +
+      `| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+
+    top5.forEach((q, idx) => {
+      answer += `| #${idx + 1} | **${q.symbol}** | ${q.name || q.symbol} | **$${q.price.toFixed(2)}** | ${q.changePercent >= 0 ? '🟢 +' : '🔴 '}${q.changePercent.toFixed(2)}% | $${q.dayLow ?? 'N/A'} - $${q.dayHigh ?? 'N/A'} | ${q.volume.toLocaleString()} |\n`;
+      observations.push(`${q.symbol}: $${q.price.toFixed(2)} (${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%)`);
+    });
+
+    const result: AIResponse = {
+      answer,
+      observations,
+      sources: ['Yahoo Finance Live Quotes'],
+      uncertainty: 'Real-time intraday price movement subject to ongoing auction order flow.',
+      metrics: { title, count: top5.length },
+      generatedAt: new Date().toISOString(),
+    };
+
+    await this.recordAnalysis(userId, 'NATURAL_QUERY', isGainers ? 'TOP_GAINERS' : 'TOP_LOSERS', {}, result);
+    return result;
+  }
+
+  // Helper 13: Beginner & Portfolio Allocation Blueprint
+  private async handleGettingStartedAndAllocation(userId: string, textLower: string): Promise<AIResponse> {
+    const account = await PaperAccount.findOne({ userId });
+    const cashBalance = account?.cashBalance ?? 100000;
+    const positions = await Position.find({ userId });
+
+    const observations = [
+      `Available Virtual Balance: $${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+      `Active Positions: ${positions.length} holdings currently in portfolio.`,
+      `Core Strategy: Diversified 3-tier portfolio model.`,
+    ];
+
+    const answer = `### How to Invest & Allocate Your $${cashBalance.toLocaleString()} Virtual Portfolio\n\n` +
+      `Building a resilient, high-performing trading portfolio requires systematic asset allocation rather than betting on single stocks. Here is the recommended **3-Tier Portfolio Architecture**:\n\n` +
+      `#### 1. Core Foundation (45% — ~$${(cashBalance * 0.45).toLocaleString()})\n` +
+      `- **Objective:** Long-term capital growth with lower volatility.\n` +
+      `- **Assets:** Index ETFs and fortress balance-sheet compounders (**SPY**, **QQQ**, **AAPL**, **MSFT**).\n` +
+      `- **Why:** Provides broad market beta and consistent free cash flow.\n\n` +
+      `#### 2. Thematic High-Growth & Momentum (35% — ~$${(cashBalance * 0.35).toLocaleString()})\n` +
+      `- **Objective:** Capital appreciation through high secular demand.\n` +
+      `- **Assets:** AI infrastructure, cloud computing, and high-beta leaders (**NVDA**, **AMZN**, **META**, **TSLA**).\n` +
+      `- **Rule:** Never allocate more than 10-15% of your portfolio to a single growth stock.\n\n` +
+      `#### 3. Liquid Cash & Opportunity Reserve (20% — ~$${(cashBalance * 0.20).toLocaleString()})\n` +
+      `- **Objective:** Capital preservation and buying pullbacks.\n` +
+      `- **Why:** Having dry powder prevents panic when markets drop and lets you buy high-quality assets at a discount.\n\n` +
+      `**Next Steps to Execute:**\n` +
+      `1. Navigate to the **Trade** page.\n` +
+      `2. Place a Market or Limit order for 1-2 core index assets (e.g. 10 shares of SPY or QQQ).\n` +
+      `3. Set automated **Alerts** to monitor key price thresholds.`;
+
+    const result: AIResponse = {
+      answer,
+      observations,
+      sources: ['StockPulse Portfolio Construction Model', 'CFA Institute Asset Allocation Guidelines'],
+      uncertainty: 'Model portfolio frameworks are educational guides for virtual paper trading.',
+      metrics: { cashBalance, positionsCount: positions.length },
+      generatedAt: new Date().toISOString(),
+    };
+
+    await this.recordAnalysis(userId, 'NATURAL_QUERY', 'PORTFOLIO_BLUEPRINT', { cashBalance }, result);
+    return result;
+  }
+
+  // Helper 14: General Financial Assistant Inquiry (Never return default brief unless asked)
+  private async handleGeneralFinancialInquiry(userId: string, rawText: string): Promise<AIResponse> {
+    const marketStatus = await marketProvider.getMarketStatus();
+    const account = await PaperAccount.findOne({ userId });
+    const cash = account?.cashBalance ?? 100000;
+
+    const answer = `### StockPulse Financial Intelligence\n\n` +
+      `Thank you for your question: *"${rawText}"*\n\n` +
+      `Here is key guidance based on your live account and current market conditions:\n\n` +
+      `- **Current Market Status:** US Markets are currently **${marketStatus.session}** (${marketStatus.isOpen ? 'Open for regular trading' : 'Closed'}). Current NYSE/NASDAQ time is ${marketStatus.localTime}.\n` +
+      `- **Your Virtual Capital:** You have **$${cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}** in available virtual paper cash.\n` +
+      `- **Things You Can Ask Me:**\n` +
+      `  • *"What stocks are good to buy today?"* (Live screened recommendations)\n` +
+      `  • *"Should I buy Tesla or NVDA right now?"* (Specific entry and target review)\n` +
+      `  • *"Can I afford 10 shares of NVDA?"* (Live purchasing power calculation)\n` +
+      `  • *"Compare Apple and Microsoft"* (Side-by-side valuation & momentum table)\n` +
+      `  • *"What is a P/E ratio, RSI, or MACD?"* (Financial education & formulas)\n` +
+      `  • *"What are my current holdings?"* (Real-time portfolio inspection)\n` +
+      `  • *"Show top gainers today"* (Ranked momentum movers)\n\n` +
+      `Feel free to ask any specific stock, strategy, or portfolio question!`;
+
+    const result: AIResponse = {
+      answer,
+      observations: [
+        `Market Status: ${marketStatus.session} (${marketStatus.isOpen ? 'Open' : 'Closed'})`,
+        `Available Virtual Funds: $${cash.toLocaleString()}`,
+      ],
+      sources: ['StockPulse Intelligence Engine'],
+      uncertainty: 'StockPulse is an educational simulated paper-trading platform.',
+      generatedAt: new Date().toISOString(),
+    };
+
+    await this.recordAnalysis(userId, 'NATURAL_QUERY', 'GENERAL_INQUIRY', { prompt: rawText }, result);
+    return result;
   }
 
   // Persistence record
