@@ -21,8 +21,10 @@ import {
   Legend,
 } from 'recharts';
 import { api } from '../services/api';
+import { useCurrency } from '../context/CurrencyContext';
 
 export const StrategyLabPage: React.FC = () => {
+  const { currency, rate, formatAmount } = useCurrency();
   const [symbol, setSymbol] = useState('AAPL');
   const [strategyType, setStrategyType] = useState<'MA_CROSSOVER' | 'RSI' | 'MOMENTUM' | 'BREAKOUT'>('MA_CROSSOVER');
   const [range, setRange] = useState('1y');
@@ -336,14 +338,28 @@ export const StrategyLabPage: React.FC = () => {
 
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={backtestResult.equityCurve} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <LineChart
+                      data={backtestResult.equityCurve.map((d: any) => ({
+                        ...d,
+                        displayStrategyEquity: d.strategyEquity * (currency === 'INR' ? rate : 1),
+                        displayBenchmarkEquity: d.benchmarkEquity * (currency === 'INR' ? rate : 1),
+                      }))}
+                      margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.6} />
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748B' }} tickLine={false} axisLine={false} />
                       <YAxis
                         tick={{ fontSize: 10, fill: '#64748B' }}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                        tickFormatter={(v) => {
+                          if (currency === 'INR') {
+                            if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)}Cr`;
+                            if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+                            return `₹${Math.round(v).toLocaleString('en-IN')}`;
+                          }
+                          return `$${(v / 1000).toFixed(0)}k`;
+                        }}
                       />
                       <Tooltip
                         content={({ active, payload }) => {
@@ -353,10 +369,10 @@ export const StrategyLabPage: React.FC = () => {
                               <div className="bg-slate-900 text-white p-3 rounded-2xl text-xs shadow-xl space-y-1">
                                 <div className="text-slate-400">{d.date}</div>
                                 <div className="text-brand-soft font-mono font-bold">
-                                  Strategy: ${d.strategyEquity.toLocaleString()}
+                                  Strategy: {formatAmount(d.strategyEquity)}
                                 </div>
                                 <div className="text-emerald-400 font-mono font-bold">
-                                  Buy & Hold: ${d.benchmarkEquity.toLocaleString()}
+                                  Buy & Hold: {formatAmount(d.benchmarkEquity)}
                                 </div>
                                 <div className="text-rose-400 font-mono text-[10px]">
                                   Drawdown: {d.drawdown}%
@@ -370,16 +386,16 @@ export const StrategyLabPage: React.FC = () => {
                       <Legend />
                       <Line
                         type="monotone"
-                        dataKey="strategyEquity"
-                        name="Strategy Equity"
+                        dataKey="displayStrategyEquity"
+                        name={`Strategy Equity (${currency === 'INR' ? '₹' : '$'})`}
                         stroke="#6736C7"
                         strokeWidth={2.5}
                         dot={false}
                       />
                       <Line
                         type="monotone"
-                        dataKey="benchmarkEquity"
-                        name="Buy & Hold Benchmark"
+                        dataKey="displayBenchmarkEquity"
+                        name={`Buy & Hold Benchmark (${currency === 'INR' ? '₹' : '$'})`}
                         stroke="#10B981"
                         strokeWidth={2}
                         strokeDasharray="4 4"

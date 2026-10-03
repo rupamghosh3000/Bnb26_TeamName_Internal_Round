@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Plus, X, Trash2, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
+import { useCurrency } from '../context/CurrencyContext';
 
 export const AlertsPage: React.FC = () => {
+  const { currency, formatAmount } = useCurrency();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [symbol, setSymbol] = useState('AAPL');
@@ -108,7 +110,7 @@ export const AlertsPage: React.FC = () => {
                     </span>
                   </div>
                   <div className="text-xs text-slate-500">
-                    Target: <span className="font-mono font-bold text-slate-900">${alert.targetPrice.toFixed(2)}</span> ({alert.direction || 'ABOVE'})
+                    Target: <span className="font-mono font-bold text-slate-900">{formatAmount(alert.targetPrice)}</span> ({alert.direction || 'ABOVE'})
                   </div>
                 </div>
               </div>
@@ -192,7 +194,7 @@ export const AlertsPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Trigger Price ($)
+                  Trigger Price ({currency === 'INR' ? '₹ INR' : '$ USD'})
                 </label>
                 <input
                   type="number"

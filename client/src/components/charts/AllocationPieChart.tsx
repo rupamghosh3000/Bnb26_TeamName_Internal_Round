@@ -1,5 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface AllocationPieChartProps {
   positions: any[];
@@ -12,6 +13,8 @@ export const AllocationPieChart: React.FC<AllocationPieChartProps> = ({
   positions = [],
   cashBalance = 100000,
 }) => {
+  const { formatAmount } = useCurrency();
+
   const data = [
     ...positions.map((p, i) => ({
       name: p.symbol,
@@ -50,7 +53,7 @@ export const AllocationPieChart: React.FC<AllocationPieChartProps> = ({
                 return (
                   <div className="bg-slate-900 text-white px-3 py-2 rounded-xl text-xs shadow-lg">
                     <span className="font-bold">{item.name}: </span>
-                    <span className="font-mono">${item.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="font-mono">{formatAmount(item.value)}</span>
                     <span className="text-slate-400 block mt-0.5">({pct}% of portfolio)</span>
                   </div>
                 );

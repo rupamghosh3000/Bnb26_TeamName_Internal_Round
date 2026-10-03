@@ -1,9 +1,11 @@
 import React from 'react';
 import { User, Shield, Info, Database, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 export const SettingsPage: React.FC = () => {
   const { user, account } = useAuth();
+  const { formatAmount } = useCurrency();
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 space-y-8">
@@ -39,7 +41,7 @@ export const SettingsPage: React.FC = () => {
           <div className="p-4 rounded-2xl bg-slate-50">
             <span className="text-slate-400 block mb-1">Starting Allocation</span>
             <span className="font-mono font-bold text-slate-900 text-sm">
-              ${account?.startingCash?.toLocaleString() || '100,000'} USD
+              {formatAmount(account?.startingCash || 100000)}
             </span>
           </div>
         </div>

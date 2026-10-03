@@ -3,6 +3,7 @@ import { X, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import confetti from 'canvas-confetti';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface QuickTradeModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
   onTradeSuccess,
 }) => {
   const { account, refreshAccount } = useAuth();
+  const { currency, rate, formatAmount } = useCurrency();
   const [symbol, setSymbol] = useState(defaultSymbol);
   const [side, setSide] = useState<'BUY' | 'SELL'>(defaultSide);
   const [type, setType] = useState<'MARKET' | 'LIMIT'>('MARKET');
@@ -153,7 +155,7 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
                   Live Price
                 </span>
                 <span className="text-xl font-mono font-extrabold text-slate-900">
-                  ${quote.price.toFixed(2)}
+                  {formatAmount(quote.price)}
                 </span>
                 <span className={`text-xs font-semibold block ${quote.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {quote.change >= 0 ? '+' : ''}{quote.changePercent.toFixed(2)}%
@@ -221,7 +223,7 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
           {type === 'LIMIT' && (
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                Limit Price ($)
+                Limit Price ({currency === 'INR' ? '₹ INR' : '$ USD'})
               </label>
               <input
                 type="number"
@@ -273,11 +275,11 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
           <div className="p-4 rounded-2xl bg-slate-50 space-y-2 border border-slate-100 text-xs">
             <div className="flex justify-between text-slate-600">
               <span>Estimated Order Value:</span>
-              <span className="font-mono font-bold text-slate-900">${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="font-mono font-bold text-slate-900">{formatAmount(totalCost)}</span>
             </div>
             <div className="flex justify-between text-slate-600">
               <span>Available Virtual Cash:</span>
-              <span className="font-mono font-bold text-slate-900">${availableCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="font-mono font-bold text-slate-900">{formatAmount(availableCash)}</span>
             </div>
           </div>
 

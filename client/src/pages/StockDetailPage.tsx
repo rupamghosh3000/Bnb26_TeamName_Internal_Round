@@ -212,19 +212,27 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
             <div className="space-y-2.5 text-xs">
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">Day High</span>
-                <span className="font-mono font-bold text-slate-900">${quote.dayHigh?.toFixed(2) || 'N/A'}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {quote.dayHigh ? formatAmount(quote.dayHigh) : 'N/A'}
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">Day Low</span>
-                <span className="font-mono font-bold text-slate-900">${quote.dayLow?.toFixed(2) || 'N/A'}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {quote.dayLow ? formatAmount(quote.dayLow) : 'N/A'}
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">52-Week High</span>
-                <span className="font-mono font-bold text-slate-900">${quote.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {quote.fiftyTwoWeekHigh ? formatAmount(quote.fiftyTwoWeekHigh) : 'N/A'}
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">52-Week Low</span>
-                <span className="font-mono font-bold text-slate-900">${quote.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {quote.fiftyTwoWeekLow ? formatAmount(quote.fiftyTwoWeekLow) : 'N/A'}
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">Trading Volume</span>
@@ -232,7 +240,9 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
               </div>
               <div className="flex justify-between py-1.5">
                 <span className="text-slate-500">Currency</span>
-                <span className="font-mono font-bold text-slate-900">{quote.currency}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {currency === 'INR' ? `INR (Converted @ ₹${rate.toFixed(2)}/$)` : quote.currency || 'USD'}
+                </span>
               </div>
             </div>
           </div>
@@ -258,13 +268,13 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
                 <div>
                   <span className="text-slate-400 block">Avg Price</span>
                   <span className="font-mono font-bold text-base text-slate-900">
-                    ${heldPosition.averagePrice.toFixed(2)}
+                    {formatAmount(heldPosition.averagePrice)}
                   </span>
                 </div>
                 <div className="col-span-2 pt-2 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-slate-500">Unrealized P&L:</span>
                   <span className={`font-mono font-bold text-sm ${heldPosition.unrealizedPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {heldPosition.unrealizedPnL >= 0 ? '+' : ''}${heldPosition.unrealizedPnL?.toFixed(2) || '0.00'}
+                    {heldPosition.unrealizedPnL >= 0 ? '+' : '-'}{formatAmount(Math.abs(heldPosition.unrealizedPnL || 0))}
                   </span>
                 </div>
               </div>

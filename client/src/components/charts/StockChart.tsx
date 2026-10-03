@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface StockChartProps {
   symbol: string;
@@ -17,6 +18,7 @@ interface StockChartProps {
 }
 
 export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '1mo' }) => {
+  const { currency, rate, formatAmount } = useCurrency();
   const [range, setRange] = useState(defaultRange);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,13 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
       .then((bars) => {
         if (isMounted) {
           const formatted = bars.map((b) => ({
-            date: range === '1d' ? new Date(b.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : b.date.split('T')[0],
+            date:
+              range === '1d'
+                ? new Date(b.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : b.date.split('T')[0],
             close: b.close,
             open: b.open,
             high: b.high,
@@ -70,19 +78,33 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
     { label: '5Y', value: '5y' },
   ];
 
-  const minPrice = data.length > 0 ? Math.min(...data.map((d) => d.low || d.close)) * 0.995 : 0;
-  const maxPrice = data.length > 0 ? Math.max(...data.map((d) => d.high || d.close)) * 1.005 : 100;
+  const multiplier = currency === 'INR' ? rate : 1;
+  const displayData = data.map((d) => ({
+    ...d,
+    displayClose: d.close * multiplier,
+    displayOpen: d.open ? d.open * multiplier : undefined,
+    displayHigh: d.high ? d.high * multiplier : undefined,
+    displayLow: d.low ? d.low * multiplier : undefined,
+  }));
+
+  const minPrice =
+    displayData.length > 0
+      ? Math.min(...displayData.map((d) => d.displayLow || d.displayClose)) * 0.995
+      : 0;
+  const maxPrice =
+    displayData.length > 0
+      ? Math.max(...displayData.map((d) => d.displayHigh || d.displayClose)) * 1.005
+      : 100;
   const isUp = data.length > 1 ? data[data.length - 1].close >= data[0].close : true;
 
   const strokeColor = isUp ? '#10B981' : '#6736C7';
-  const fillColor = isUp ? 'rgba(16, 185, 129, 0.15)' : 'rgba(103, 54, 199, 0.15)';
 
   return (
     <div className="w-full">
       {/* Range Selector Bar */}
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-          Historical Price (OHLCV)
+          Historical Price (OHLCV) {currency === 'INR' ? '(₹ INR)' : '($ USD)'}
         </span>
         <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl">
           {ranges.map((r) => (
@@ -107,13 +129,13 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
           <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-xs rounded-2xl z-10">
             <Loader2 className="w-6 h-6 text-brand-primary animate-spin" />
           </div>
-        ) : data.length === 0 ? (
+        ) : displayData.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-slate-400">
             No historical price data available for the selected range.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={displayData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id={`gradient_${symbol}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={strokeColor} stopOpacity={0.4} />
@@ -133,7 +155,11 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
                 tick={{ fontSize: 11, fill: '#64748B' }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(val) => `$${val.toFixed(val < 10 ? 2 : 0)}`}
+                tickFormatter={(val) =>
+                  currency === 'INR'
+                    ? `₹${Math.round(val).toLocaleString('en-IN')}`
+                    : `$${val.toFixed(val < 10 ? 2 : 0)}`
+                }
               />
               <Tooltip
                 content={({ active, payload }) => {
@@ -143,13 +169,13 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
                       <div className="bg-slate-900/90 text-white p-3 rounded-2xl shadow-xl text-xs backdrop-blur-sm border border-slate-700">
                         <div className="font-semibold text-slate-300 mb-1">{d.date}</div>
                         <div className="font-mono text-base font-extrabold text-white">
-                          ${d.close.toFixed(2)}
+                          {formatAmount(d.close)}
                         </div>
                         {d.open && (
                           <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[10px] text-slate-400 font-mono">
-                            <span>Open: ${d.open.toFixed(2)}</span>
-                            <span>High: ${d.high.toFixed(2)}</span>
-                            <span>Low: ${d.low.toFixed(2)}</span>
+                            <span>Open: {formatAmount(d.open)}</span>
+                            <span>High: {formatAmount(d.high)}</span>
+                            <span>Low: {formatAmount(d.low)}</span>
                             <span>Vol: {d.volume?.toLocaleString() || 'N/A'}</span>
                           </div>
                         )}
@@ -161,7 +187,7 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
               />
               <Area
                 type="monotone"
-                dataKey="close"
+                dataKey="displayClose"
                 stroke={strokeColor}
                 strokeWidth={2.5}
                 fillOpacity={1}

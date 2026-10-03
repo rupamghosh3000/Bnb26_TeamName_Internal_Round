@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ShieldAlert, AlertTriangle, Info, TrendingDown, RefreshCw, Sliders } from 'lucide-react';
 import { StatCard } from '../components/common/StatCard';
 import { api } from '../services/api';
+import { useCurrency } from '../context/CurrencyContext';
 
 export const RiskPage: React.FC = () => {
+  const { formatAmount } = useCurrency();
   const [risk, setRisk] = useState<any>(null);
   const [customShock, setCustomShock] = useState<number>(-10);
   const [customResult, setCustomResult] = useState<any>(null);
@@ -107,7 +109,7 @@ export const RiskPage: React.FC = () => {
                   <div>
                     <span className="font-bold text-sm text-slate-900 block">{scenario.name}</span>
                     <span className="text-xs text-slate-400">
-                      Projected Portfolio Value: ${scenario.projectedPortfolioValue.toLocaleString()}
+                      Projected Portfolio Value: {formatAmount(scenario.projectedPortfolioValue)}
                     </span>
                   </div>
 
@@ -118,7 +120,7 @@ export const RiskPage: React.FC = () => {
                           isNegative ? 'text-rose-600' : 'text-emerald-600'
                         }`}
                       >
-                        {scenario.portfolioImpactValue >= 0 ? '+' : ''}${scenario.portfolioImpactValue.toLocaleString()}
+                        {scenario.portfolioImpactValue >= 0 ? '+' : '-'}{formatAmount(Math.abs(scenario.portfolioImpactValue))}
                       </span>
                       <span className="text-xs text-slate-500 font-mono">
                         Net: {scenario.projectedReturnPercent >= 0 ? '+' : ''}{scenario.projectedReturnPercent}%
@@ -174,13 +176,13 @@ export const RiskPage: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-slate-600">Simulated Impact:</span>
                   <span className={`font-mono font-bold ${customResult.impactValue < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                    {customResult.impactValue >= 0 ? '+' : ''}${customResult.impactValue.toLocaleString()}
+                    {customResult.impactValue >= 0 ? '+' : '-'}{formatAmount(Math.abs(customResult.impactValue))}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">Projected Total Value:</span>
                   <span className="font-mono font-bold text-slate-900">
-                    ${customResult.projectedValue.toLocaleString()}
+                    {formatAmount(customResult.projectedValue)}
                   </span>
                 </div>
                 <div className="flex justify-between">

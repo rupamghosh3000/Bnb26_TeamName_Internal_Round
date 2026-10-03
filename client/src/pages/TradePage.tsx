@@ -14,10 +14,12 @@ import {
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { FreshnessBadge } from '../components/common/Badge';
 
 export const TradePage: React.FC = () => {
   const { account, refreshAccount } = useAuth();
+  const { currency, rate, formatAmount } = useCurrency();
   const [symbol, setSymbol] = useState('AAPL');
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [type, setType] = useState<'MARKET' | 'LIMIT'>('MARKET');
@@ -126,7 +128,7 @@ export const TradePage: React.FC = () => {
           Paper Trading Terminal
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Execute simulated orders with real market liquidity against your $100,000 virtual balance.
+          Execute simulated orders with real market liquidity against your {formatAmount(100000)} virtual balance.
         </p>
       </div>
 
@@ -139,7 +141,7 @@ export const TradePage: React.FC = () => {
             </span>
             <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-700">
               <Wallet className="w-4 h-4 text-brand-primary" />
-              <span>${availableCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span>{formatAmount(availableCash)}</span>
             </div>
           </div>
 
@@ -165,7 +167,7 @@ export const TradePage: React.FC = () => {
                 <div className="mt-2 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-slate-900">
-                      ${quote.price.toFixed(2)}
+                      {formatAmount(quote.price)}
                     </span>
                     <span
                       className={`text-xs font-semibold ${
@@ -281,13 +283,13 @@ export const TradePage: React.FC = () => {
               <div className="flex justify-between text-slate-600">
                 <span>Estimated Value:</span>
                 <span className="font-mono font-bold text-slate-900">
-                  ${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatAmount(totalCost)}
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Cash After Trade:</span>
                 <span className="font-mono font-bold text-slate-900">
-                  ${Math.max(0, availableCash - (side === 'BUY' ? totalCost : 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatAmount(Math.max(0, availableCash - (side === 'BUY' ? totalCost : 0)))}
                 </span>
               </div>
             </div>
@@ -390,7 +392,7 @@ export const TradePage: React.FC = () => {
                         <td className="py-3 text-slate-500 font-sans">{o.type}</td>
                         <td className="py-3 text-right font-bold text-slate-900">{o.quantity}</td>
                         <td className="py-3 text-right font-bold text-slate-900">
-                          {o.executedPrice ? `$${o.executedPrice.toFixed(2)}` : o.limitPrice ? `$${o.limitPrice.toFixed(2)}` : 'Market'}
+                          {o.executedPrice ? formatAmount(o.executedPrice) : o.limitPrice ? formatAmount(o.limitPrice) : 'Market'}
                         </td>
                         <td className="py-3 text-right font-sans">
                           <span
@@ -453,12 +455,12 @@ export const TradePage: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 text-right font-bold text-slate-900">{t.quantity}</td>
-                        <td className="py-3 text-right font-bold text-slate-900">${t.price.toFixed(2)}</td>
-                        <td className="py-3 text-right font-bold text-slate-900">${t.value.toFixed(2)}</td>
+                        <td className="py-3 text-right font-bold text-slate-900">{formatAmount(t.price)}</td>
+                        <td className="py-3 text-right font-bold text-slate-900">{formatAmount(t.value)}</td>
                         <td className="py-3 text-right font-bold">
                           {t.realizedPnL != null ? (
                             <span className={t.realizedPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
-                              {t.realizedPnL >= 0 ? '+' : ''}${t.realizedPnL.toFixed(2)}
+                              {t.realizedPnL >= 0 ? '+' : '-'}{formatAmount(Math.abs(t.realizedPnL))}
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>

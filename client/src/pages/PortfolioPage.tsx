@@ -13,10 +13,12 @@ import { StatCard } from '../components/common/StatCard';
 import { PerformanceChart } from '../components/charts/PerformanceChart';
 import { AllocationPieChart } from '../components/charts/AllocationPieChart';
 import { api } from '../services/api';
+import { useCurrency } from '../context/CurrencyContext';
 
 export const PortfolioPage: React.FC<{ onOpenQuickTrade: (symbol: string, side: 'BUY' | 'SELL') => void }> = ({
   onOpenQuickTrade,
 }) => {
+  const { formatAmount } = useCurrency();
   const [portfolio, setPortfolio] = useState<any>(null);
   const [performance, setPerformance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,26 +76,26 @@ export const PortfolioPage: React.FC<{ onOpenQuickTrade: (symbol: string, side: 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Portfolio Valuation"
-          value={`$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatAmount(totalValue)}
           change={returnPercent}
-          changeText={`Base: $${startingCash.toLocaleString()}`}
+          changeText={`Base: ${formatAmount(startingCash)}`}
           icon={<Wallet className="w-5 h-5" />}
         />
         <StatCard
           title="Unrealized P&L"
-          value={`${unrealized >= 0 ? '+' : ''}$${unrealized.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={`${unrealized >= 0 ? '+' : '-'}${formatAmount(Math.abs(unrealized))}`}
           changeText="Mark-to-market open"
           icon={unrealized >= 0 ? <TrendingUp className="w-5 h-5 text-emerald-600" /> : <TrendingDown className="w-5 h-5 text-rose-600" />}
         />
         <StatCard
           title="Realized P&L"
-          value={`${realized >= 0 ? '+' : ''}$${realized.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={`${realized >= 0 ? '+' : '-'}${formatAmount(Math.abs(realized))}`}
           changeText="From closed positions"
           icon={<Layers className="w-5 h-5 text-brand-primary" />}
         />
         <StatCard
           title="Virtual Cash Buffer"
-          value={`$${(portfolio?.cashBalance || 100000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatAmount(portfolio?.cashBalance || 100000)}
           changeText={`${portfolio?.cashExposurePercent?.toFixed(1) || 100}% of portfolio`}
           icon={<Wallet className="w-5 h-5" />}
         />
@@ -163,13 +165,13 @@ export const PortfolioPage: React.FC<{ onOpenQuickTrade: (symbol: string, side: 
                       </span>
                     </td>
                     <td className="py-4 text-right font-bold text-slate-900">{pos.quantity}</td>
-                    <td className="py-4 text-right text-slate-600">${pos.averagePrice.toFixed(2)}</td>
-                    <td className="py-4 text-right font-bold text-slate-900">${pos.currentPrice.toFixed(2)}</td>
-                    <td className="py-4 text-right text-slate-600">${pos.investedValue.toFixed(2)}</td>
-                    <td className="py-4 text-right font-extrabold text-slate-900">${pos.currentValue.toFixed(2)}</td>
+                    <td className="py-4 text-right text-slate-600">{formatAmount(pos.averagePrice)}</td>
+                    <td className="py-4 text-right font-bold text-slate-900">{formatAmount(pos.currentPrice)}</td>
+                    <td className="py-4 text-right text-slate-600">{formatAmount(pos.investedValue)}</td>
+                    <td className="py-4 text-right font-extrabold text-slate-900">{formatAmount(pos.currentValue)}</td>
                     <td className="py-4 text-right font-bold">
                       <span className={pos.unrealizedPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
-                        {pos.unrealizedPnL >= 0 ? '+' : ''}${pos.unrealizedPnL.toFixed(2)}
+                        {pos.unrealizedPnL >= 0 ? '+' : '-'}{formatAmount(Math.abs(pos.unrealizedPnL))}
                         <span className="text-[10px] block font-sans">({pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%)</span>
                       </span>
                     </td>
