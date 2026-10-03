@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import { useCurrency } from '../context/CurrencyContext';
 
 export const AlertsPage: React.FC = () => {
-  const { currency, formatAmount } = useCurrency();
+  const { currency, formatAmount, formatStockPrice } = useCurrency();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [symbol, setSymbol] = useState('AAPL');
@@ -110,7 +110,7 @@ export const AlertsPage: React.FC = () => {
                     </span>
                   </div>
                   <div className="text-xs text-slate-500">
-                    Target: <span className="font-mono font-bold text-slate-900">{formatAmount(alert.targetPrice)}</span> ({alert.direction || 'ABOVE'})
+                    Target: <span className="font-mono font-bold text-slate-900">{formatStockPrice(alert.targetPrice, alert.symbol)}</span> ({alert.direction || 'ABOVE'})
                   </div>
                 </div>
               </div>

@@ -18,7 +18,7 @@ import { useCurrency } from '../context/CurrencyContext';
 export const PortfolioPage: React.FC<{ onOpenQuickTrade: (symbol: string, side: 'BUY' | 'SELL') => void }> = ({
   onOpenQuickTrade,
 }) => {
-  const { formatAmount } = useCurrency();
+  const { formatAmount, formatStockPrice } = useCurrency();
   const [portfolio, setPortfolio] = useState<any>(null);
   const [performance, setPerformance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,8 +165,8 @@ export const PortfolioPage: React.FC<{ onOpenQuickTrade: (symbol: string, side: 
                       </span>
                     </td>
                     <td className="py-4 text-right font-bold text-slate-900">{pos.quantity}</td>
-                    <td className="py-4 text-right text-slate-600">{formatAmount(pos.averagePrice)}</td>
-                    <td className="py-4 text-right font-bold text-slate-900">{formatAmount(pos.currentPrice)}</td>
+                    <td className="py-4 text-right text-slate-600">{formatStockPrice(pos.averagePrice, pos.symbol, pos.currency)}</td>
+                    <td className="py-4 text-right font-bold text-slate-900">{formatStockPrice(pos.currentPrice, pos.symbol, pos.currency)}</td>
                     <td className="py-4 text-right text-slate-600">{formatAmount(pos.investedValue)}</td>
                     <td className="py-4 text-right font-extrabold text-slate-900">{formatAmount(pos.currentValue)}</td>
                     <td className="py-4 text-right font-bold">

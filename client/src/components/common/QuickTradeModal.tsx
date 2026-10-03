@@ -21,7 +21,7 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
   onTradeSuccess,
 }) => {
   const { account, refreshAccount } = useAuth();
-  const { currency, rate, formatAmount } = useCurrency();
+  const { currency, rate, formatAmount, formatStockPrice, isIndianAsset } = useCurrency();
   const [symbol, setSymbol] = useState(defaultSymbol);
   const [side, setSide] = useState<'BUY' | 'SELL'>(defaultSide);
   const [type, setType] = useState<'MARKET' | 'LIMIT'>('MARKET');
@@ -75,9 +75,13 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
   const currentHeldPosition = positions.find((p) => p.symbol === symbol.toUpperCase());
   const heldQuantity = currentHeldPosition ? currentHeldPosition.quantity : 0;
   const executionPrice = quote ? quote.price : 0;
+  const isIndian = isIndianAsset(symbol, quote?.currency);
   const targetPrice = type === 'LIMIT' && limitPrice ? parseFloat(limitPrice) : executionPrice;
   const totalCost = targetPrice * quantity;
   const availableCash = account?.cashBalance || 0;
+  const priceInUSD = isIndian ? (rate > 0 ? executionPrice / rate : executionPrice) : executionPrice;
+  const costInUSD = isIndian ? (rate > 0 ? totalCost / rate : totalCost) : totalCost;
+  const maxAfford = priceInUSD > 0 ? Math.floor(availableCash / priceInUSD) : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +159,7 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
                   Live Price
                 </span>
                 <span className="text-xl font-mono font-extrabold text-slate-900">
-                  {formatAmount(quote.price)}
+                  {formatStockPrice(quote.price, quote.symbol, quote.currency)}
                 </span>
                 <span className={`text-xs font-semibold block ${quote.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {quote.change >= 0 ? '+' : ''}{quote.changePercent.toFixed(2)}%
@@ -243,7 +247,7 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Shares Quantity</label>
               <span className="text-xs text-slate-500 font-medium">
                 {side === 'BUY'
-                  ? `Max Afford: ${executionPrice > 0 ? Math.floor(availableCash / executionPrice) : 0} shares`
+                  ? `Max Afford: ${maxAfford} shares`
                   : `Currently Held: ${heldQuantity} shares`}
               </span>
             </div>
@@ -275,7 +279,9 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
           <div className="p-4 rounded-2xl bg-slate-50 space-y-2 border border-slate-100 text-xs">
             <div className="flex justify-between text-slate-600">
               <span>Estimated Order Value:</span>
-              <span className="font-mono font-bold text-slate-900">{formatAmount(totalCost)}</span>
+              <span className="font-mono font-bold text-slate-900">
+                {formatStockPrice(totalCost, symbol, quote?.currency)}
+              </span>
             </div>
             <div className="flex justify-between text-slate-600">
               <span>Available Virtual Cash:</span>
@@ -302,7 +308,7 @@ export const QuickTradeModal: React.FC<QuickTradeModalProps> = ({
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={submitting || (side === 'BUY' && totalCost > availableCash) || (side === 'SELL' && quantity > heldQuantity)}
+            disabled={submitting || (side === 'BUY' && costInUSD > availableCash) || (side === 'SELL' && quantity > heldQuantity)}
             className={`w-full py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all ${
               side === 'BUY'
                 ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25 disabled:bg-slate-300'

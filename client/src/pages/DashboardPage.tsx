@@ -25,7 +25,7 @@ export const DashboardPage: React.FC<{ onOpenQuickTrade: (symbol?: string) => vo
   onOpenQuickTrade,
 }) => {
   const { account, refreshAccount } = useAuth();
-  const { formatAmount } = useCurrency();
+  const { formatAmount, formatStockPrice } = useCurrency();
   const [portfolio, setPortfolio] = useState<any>(null);
   const [performance, setPerformance] = useState<any[]>([]);
   const [marketOverview, setMarketOverview] = useState<any>(null);
@@ -248,14 +248,14 @@ export const DashboardPage: React.FC<{ onOpenQuickTrade: (symbol?: string) => vo
                         </span>
                       </td>
                       <td className="py-3 text-right font-mono font-semibold">{pos.quantity}</td>
-                      <td className="py-3 text-right font-mono">${pos.averagePrice.toFixed(2)}</td>
-                      <td className="py-3 text-right font-mono font-bold">${pos.currentPrice.toFixed(2)}</td>
+                      <td className="py-3 text-right font-mono text-slate-600">{formatStockPrice(pos.averagePrice, pos.symbol, pos.currency)}</td>
+                      <td className="py-3 text-right font-mono font-bold text-slate-900">{formatStockPrice(pos.currentPrice, pos.symbol, pos.currency)}</td>
                       <td className="py-3 text-right font-mono font-bold">
-                        ${pos.currentValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatAmount(pos.currentValue)}
                       </td>
                       <td className="py-3 text-right font-mono font-bold">
                         <span className={pos.unrealizedPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
-                          {pos.unrealizedPnL >= 0 ? '+' : ''}${pos.unrealizedPnL.toFixed(2)}
+                          {pos.unrealizedPnL >= 0 ? '+' : '-'}{formatAmount(Math.abs(pos.unrealizedPnL))}
                           <span className="text-[10px] block">({pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%)</span>
                         </span>
                       </td>
@@ -351,7 +351,7 @@ export const DashboardPage: React.FC<{ onOpenQuickTrade: (symbol?: string) => vo
                 <div className="flex items-center gap-4 text-right">
                   <div>
                     <span className="font-mono font-bold text-slate-900 text-sm block">
-                      ${item.price.toFixed(2)}
+                      {formatStockPrice(item.price, item.symbol, item.currency)}
                     </span>
                     <span
                       className={`text-xs font-bold ${
@@ -417,10 +417,10 @@ export const DashboardPage: React.FC<{ onOpenQuickTrade: (symbol?: string) => vo
 
                   <div className="text-right">
                     <span className="font-mono font-bold text-slate-900 block">
-                      {t.quantity} @ ${t.price.toFixed(2)}
+                      {t.quantity} @ {formatStockPrice(t.price, t.symbol)}
                     </span>
                     <span className="text-slate-500 text-[11px]">
-                      Value: ${t.value.toFixed(2)}
+                      Value: {formatAmount(t.value)}
                     </span>
                   </div>
                 </div>

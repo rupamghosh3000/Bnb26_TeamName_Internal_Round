@@ -4,7 +4,7 @@ import { Position } from '../models/Position.js';
 import { Order, OrderSide, OrderType, IOrder } from '../models/Order.js';
 import { Trade } from '../models/Trade.js';
 import { marketProvider } from '../providers/index.js';
-import { portfolioService } from './portfolioService.js';
+import { portfolioService, isIndianSymbol, getUsdToInrRate } from './portfolioService.js';
 
 export interface PlaceOrderDTO {
   userId: string;
@@ -24,9 +24,15 @@ export class TradingService {
       throw new Error('Order quantity must be at least 1.');
     }
 
-    // Get latest real market quote
-    const quote = await marketProvider.getQuote(symbol);
+    // Get latest real market quote and live forex rate
+    const [quote, usdInrRate] = await Promise.all([
+      marketProvider.getQuote(symbol),
+      getUsdToInrRate(),
+    ]);
+
     const executionPrice = quote.price;
+    const isIndian = isIndianSymbol(symbol, quote.currency);
+    const priceInUSD = isIndian ? (usdInrRate > 0 ? executionPrice / usdInrRate : executionPrice) : executionPrice;
 
     if (executionPrice <= 0) {
       throw new Error(`Unable to determine valid market price for ${symbol}.`);
@@ -37,12 +43,15 @@ export class TradingService {
       throw new Error('Paper trading account not found.');
     }
 
-    // 1. Validation according to order side
+    // 1. Validation according to order side in USD base
     if (dto.side === 'BUY') {
-      const estimatedValue = (dto.type === 'LIMIT' && dto.limitPrice ? dto.limitPrice : executionPrice) * quantity;
-      if (account.cashBalance < estimatedValue) {
+      const targetExecutionPrice = dto.type === 'LIMIT' && dto.limitPrice ? dto.limitPrice : executionPrice;
+      const targetPriceInUSD = isIndian ? (usdInrRate > 0 ? targetExecutionPrice / usdInrRate : targetExecutionPrice) : targetExecutionPrice;
+      const estimatedValueUSD = targetPriceInUSD * quantity;
+
+      if (account.cashBalance < estimatedValueUSD) {
         throw new Error(
-          `Insufficient virtual cash. Required: $${estimatedValue.toFixed(2)}, Available: $${account.cashBalance.toFixed(2)}`
+          `Insufficient virtual cash. Required: $${estimatedValueUSD.toFixed(2)} USD (${isIndian ? `₹${(targetExecutionPrice * quantity).toLocaleString('en-IN')}` : ''}), Available: $${account.cashBalance.toFixed(2)} USD`
         );
       }
     } else if (dto.side === 'SELL') {
@@ -80,29 +89,31 @@ export class TradingService {
     await order.save();
 
     if (canFillImmediately) {
-      await this.executeFilledOrder(account, order, executionPrice);
+      await this.executeFilledOrder(account, order, executionPrice, isIndian, usdInrRate);
       // Trigger background snapshot update
       portfolioService.recordSnapshot(dto.userId).catch(() => {});
       return {
         order,
-        message: `Successfully executed ${dto.side} ${quantity} shares of ${symbol} at $${executionPrice.toFixed(2)}.`,
+        message: `Successfully executed ${dto.side} ${quantity} shares of ${symbol} at ${isIndian ? '₹' : '$'}${executionPrice.toFixed(2)}.`,
       };
     } else {
       return {
         order,
-        message: `Limit ${dto.side} order placed for ${quantity} shares of ${symbol} at $${dto.limitPrice?.toFixed(2)} (Current price: $${executionPrice.toFixed(2)}).`,
+        message: `Limit ${dto.side} order placed for ${quantity} shares of ${symbol} at ${isIndian ? '₹' : '$'}${dto.limitPrice?.toFixed(2)} (Current price: ${isIndian ? '₹' : '$'}${executionPrice.toFixed(2)}).`,
       };
     }
   }
 
-  private async executeFilledOrder(account: any, order: IOrder, price: number) {
-    const orderValue = price * order.quantity;
+  private async executeFilledOrder(account: any, order: IOrder, price: number, isIndian?: boolean, rate: number = 84.5) {
+    const isIndianAsset = isIndian ?? isIndianSymbol(order.symbol);
+    const priceInUSD = isIndianAsset ? (rate > 0 ? price / rate : price) : price;
+    const orderValueInUSD = priceInUSD * order.quantity;
     const userId = order.userId;
     const symbol = order.symbol;
 
     if (order.side === 'BUY') {
-      // Deduct cash
-      account.cashBalance -= orderValue;
+      // Deduct cash in USD base
+      account.cashBalance -= orderValueInUSD;
       await account.save();
 
       // Update position
@@ -135,7 +146,7 @@ export class TradingService {
         side: 'BUY',
         quantity: order.quantity,
         price,
-        value: orderValue,
+        value: Number(orderValueInUSD.toFixed(2)),
         executedAt: new Date(),
       });
       await trade.save();
@@ -145,10 +156,12 @@ export class TradingService {
         throw new Error(`Cannot execute sell: no position found for ${symbol}`);
       }
 
-      const realizedPnL = (price - position.averagePrice) * order.quantity;
+      const realizedPnLInUSD = isIndianAsset
+        ? (rate > 0 ? ((price - position.averagePrice) / rate) * order.quantity : (price - position.averagePrice) * order.quantity)
+        : (price - position.averagePrice) * order.quantity;
 
-      // Credit cash
-      account.cashBalance += orderValue;
+      // Credit cash in USD base
+      account.cashBalance += orderValueInUSD;
       await account.save();
 
       // Update position
@@ -168,8 +181,8 @@ export class TradingService {
         side: 'SELL',
         quantity: order.quantity,
         price,
-        value: orderValue,
-        realizedPnL: Number(realizedPnL.toFixed(2)),
+        value: Number(orderValueInUSD.toFixed(2)),
+        realizedPnL: Number(realizedPnLInUSD.toFixed(2)),
         executedAt: new Date(),
       });
       await trade.save();

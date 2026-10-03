@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, TrendingUp, TrendingDown, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
 import { SentimentBadge, FreshnessBadge } from '../components/common/Badge';
+import { useCurrency } from '../context/CurrencyContext';
 import { api } from '../services/api';
 
 export const MarketPulsePage: React.FC<{ onOpenQuickTrade: (symbol: string) => void }> = ({
   onOpenQuickTrade,
 }) => {
+  const { formatStockPrice } = useCurrency();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -122,7 +124,7 @@ export const MarketPulsePage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
 
                 <div className="flex items-end justify-between">
                   <div className="font-mono font-extrabold text-2xl text-slate-900">
-                    ${q.price.toFixed(2)}
+                    {formatStockPrice(q.price, q.symbol, q.currency)}
                   </div>
                   <div className={`text-xs font-bold ${isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {isUp ? '+' : ''}{q.changePercent.toFixed(2)}%

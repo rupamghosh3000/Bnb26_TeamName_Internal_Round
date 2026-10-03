@@ -9,13 +9,17 @@ import { api } from '../services/api';
 export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void }> = ({
   onOpenQuickTrade,
 }) => {
-  const { formatAmount } = useCurrency();
+  const { formatAmount, formatStockPrice } = useCurrency();
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [popularQuotes, setPopularQuotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const symbols = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'SPY', 'QQQ', 'AMD'];
+  const symbols = [
+    'AAPL', 'NVDA', 'MSFT', 'TSLA', 'AMZN', 'GOOGL', 'META',
+    'RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS',
+    'SPY', 'QQQ'
+  ];
 
   const fetchQuotes = async () => {
     setLoading(true);
@@ -155,7 +159,7 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
                 <div className="pt-2 border-t border-slate-100 flex items-end justify-between">
                   <div>
                     <span className="font-mono font-extrabold text-2xl text-slate-900 block">
-                      {formatAmount(q.price)}
+                      {formatStockPrice(q.price, q.symbol, q.currency)}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       Vol: {q.volume.toLocaleString()}
@@ -168,7 +172,7 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
                       <span>{isUp ? '+' : ''}{q.changePercent.toFixed(2)}%</span>
                     </div>
                     <span className="text-[10px] block opacity-80">
-                      {isUp ? '+' : '-'}{formatAmount(Math.abs(q.change))}
+                      {isUp ? '+' : '-'}{formatStockPrice(Math.abs(q.change), q.symbol, q.currency)}
                     </span>
                   </div>
                 </div>

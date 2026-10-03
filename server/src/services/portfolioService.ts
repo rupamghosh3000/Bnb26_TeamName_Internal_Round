@@ -7,6 +7,7 @@ import { marketProvider } from '../providers/index.js';
 export interface EnrichedPosition {
   id: string;
   symbol: string;
+  currency?: string;
   name?: string;
   quantity: number;
   averagePrice: number;
@@ -17,6 +18,21 @@ export interface EnrichedPosition {
   pnlPercent: number;
   allocationPercent: number;
   changePercent?: number;
+}
+
+export function isIndianSymbol(symbol: string, currency?: string): boolean {
+  if (currency === 'INR') return true;
+  if (!symbol) return false;
+  const s = symbol.toUpperCase();
+  return s.endsWith('.NS') || s.endsWith('.BO') || s.startsWith('^NSE') || s.startsWith('^BSE');
+}
+
+export async function getUsdToInrRate(): Promise<number> {
+  try {
+    const q = await marketProvider.getQuote('USDINR=X');
+    if (q && q.price > 0) return q.price;
+  } catch {}
+  return 84.5;
 }
 
 export interface PortfolioSummary {
@@ -67,12 +83,19 @@ export class PortfolioService {
       }
     });
 
-    const quoteResults = await Promise.all(quotePromises);
+    const [quoteResults, usdInrRate] = await Promise.all([
+      Promise.all(quotePromises),
+      getUsdToInrRate(),
+    ]);
 
     for (const { pos, quote } of quoteResults) {
+      const isIndian = isIndianSymbol(pos.symbol, quote?.currency);
       const price = pos.currentPrice;
-      const currentVal = pos.quantity * price;
-      const investedVal = pos.quantity * pos.averagePrice;
+      const priceInUSD = isIndian ? (usdInrRate > 0 ? price / usdInrRate : price) : price;
+      const avgPriceInUSD = isIndian ? (usdInrRate > 0 ? pos.averagePrice / usdInrRate : pos.averagePrice) : pos.averagePrice;
+
+      const currentVal = pos.quantity * priceInUSD;
+      const investedVal = pos.quantity * avgPriceInUSD;
       const pnl = currentVal - investedVal;
       const pnlPct = investedVal > 0 ? (pnl / investedVal) * 100 : 0;
 
@@ -82,6 +105,7 @@ export class PortfolioService {
       enrichedPositions.push({
         id: pos._id.toString(),
         symbol: pos.symbol,
+        currency: isIndian ? 'INR' : (quote?.currency || 'USD'),
         name: quote?.name || pos.symbol,
         quantity: pos.quantity,
         averagePrice: Number(pos.averagePrice.toFixed(2)),

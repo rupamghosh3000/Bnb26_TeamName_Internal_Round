@@ -18,7 +18,7 @@ interface StockChartProps {
 }
 
 export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '1mo' }) => {
-  const { currency, rate, formatAmount } = useCurrency();
+  const { currency, rate, formatAmount, formatStockPrice, isIndianAsset } = useCurrency();
   const [range, setRange] = useState(defaultRange);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +78,15 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
     { label: '5Y', value: '5y' },
   ];
 
-  const multiplier = currency === 'INR' ? rate : 1;
+  const isIndian = isIndianAsset(symbol);
+  // For Indian assets (e.g. RELIANCE.NS), raw OHLCV bars are in INR.
+  // In INR mode: multiplier is 1. In USD mode: convert to USD (1 / rate).
+  // For US assets (e.g. AAPL), raw OHLCV bars are in USD.
+  // In INR mode: convert to INR (rate). In USD mode: multiplier is 1.
+  const multiplier = isIndian
+    ? (currency === 'USD' ? (rate > 0 ? 1 / rate : 1) : 1)
+    : (currency === 'INR' ? rate : 1);
+
   const displayData = data.map((d) => ({
     ...d,
     displayClose: d.close * multiplier,
@@ -169,13 +177,13 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol, defaultRange = '
                       <div className="bg-slate-900/90 text-white p-3 rounded-2xl shadow-xl text-xs backdrop-blur-sm border border-slate-700">
                         <div className="font-semibold text-slate-300 mb-1">{d.date}</div>
                         <div className="font-mono text-base font-extrabold text-white">
-                          {formatAmount(d.close)}
+                          {formatStockPrice(d.close, symbol)}
                         </div>
                         {d.open && (
                           <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[10px] text-slate-400 font-mono">
-                            <span>Open: {formatAmount(d.open)}</span>
-                            <span>High: {formatAmount(d.high)}</span>
-                            <span>Low: {formatAmount(d.low)}</span>
+                            <span>Open: {formatStockPrice(d.open, symbol)}</span>
+                            <span>High: {formatStockPrice(d.high, symbol)}</span>
+                            <span>Low: {formatStockPrice(d.low, symbol)}</span>
                             <span>Vol: {d.volume?.toLocaleString() || 'N/A'}</span>
                           </div>
                         )}

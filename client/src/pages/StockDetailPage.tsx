@@ -27,7 +27,7 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
   const { symbol = 'AAPL' } = useParams<{ symbol: string }>();
   const cleanSymbol = symbol.toUpperCase();
   const { user } = useAuth();
-  const { currency, formatAmount, rate } = useCurrency();
+  const { currency, formatAmount, formatStockPrice, isIndianAsset, rate } = useCurrency();
 
   const [quote, setQuote] = useState<any>(null);
   const [news, setNews] = useState<any[]>([]);
@@ -157,17 +157,21 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
         <div className="flex items-center justify-between md:justify-end gap-6">
           <div className="text-right">
             <div className="text-3xl font-black text-slate-900 font-mono tracking-tight">
-              {formatAmount(quote.price)}
+              {formatStockPrice(quote.price, quote.symbol, quote.currency)}
             </div>
             <div className="text-[11px] font-mono text-slate-400 font-medium">
-              {currency === 'INR'
-                ? `($${quote.price.toFixed(2)} USD)`
-                : `(≈ ₹${(quote.price * rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })} INR)`}
+              {isIndianAsset(quote.symbol, quote.currency)
+                ? (currency === 'INR'
+                    ? `(≈ $${(rate > 0 ? quote.price / rate : quote.price).toFixed(2)} USD)`
+                    : `(Native: ₹${quote.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })} INR)`)
+                : (currency === 'INR'
+                    ? `(Native: $${quote.price.toFixed(2)} USD)`
+                    : `(≈ ₹${(quote.price * rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })} INR)`)}
             </div>
             <div className={`text-xs font-bold flex items-center justify-end gap-1 mt-0.5 ${isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
               {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               <span>
-                {isUp ? '+' : '-'}{formatAmount(Math.abs(quote.change))} ({isUp ? '+' : ''}{quote.changePercent.toFixed(2)}%)
+                {isUp ? '+' : '-'}{formatStockPrice(Math.abs(quote.change), quote.symbol, quote.currency)} ({isUp ? '+' : ''}{quote.changePercent.toFixed(2)}%)
               </span>
             </div>
           </div>
@@ -213,25 +217,25 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">Day High</span>
                 <span className="font-mono font-bold text-slate-900">
-                  {quote.dayHigh ? formatAmount(quote.dayHigh) : 'N/A'}
+                  {quote.dayHigh ? formatStockPrice(quote.dayHigh, quote.symbol, quote.currency) : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">Day Low</span>
                 <span className="font-mono font-bold text-slate-900">
-                  {quote.dayLow ? formatAmount(quote.dayLow) : 'N/A'}
+                  {quote.dayLow ? formatStockPrice(quote.dayLow, quote.symbol, quote.currency) : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">52-Week High</span>
                 <span className="font-mono font-bold text-slate-900">
-                  {quote.fiftyTwoWeekHigh ? formatAmount(quote.fiftyTwoWeekHigh) : 'N/A'}
+                  {quote.fiftyTwoWeekHigh ? formatStockPrice(quote.fiftyTwoWeekHigh, quote.symbol, quote.currency) : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">52-Week Low</span>
                 <span className="font-mono font-bold text-slate-900">
-                  {quote.fiftyTwoWeekLow ? formatAmount(quote.fiftyTwoWeekLow) : 'N/A'}
+                  {quote.fiftyTwoWeekLow ? formatStockPrice(quote.fiftyTwoWeekLow, quote.symbol, quote.currency) : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
@@ -239,9 +243,9 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
                 <span className="font-mono font-bold text-slate-900">{quote.volume.toLocaleString()}</span>
               </div>
               <div className="flex justify-between py-1.5">
-                <span className="text-slate-500">Currency</span>
+                <span className="text-slate-500">Native Asset Currency</span>
                 <span className="font-mono font-bold text-slate-900">
-                  {currency === 'INR' ? `INR (Converted @ ₹${rate.toFixed(2)}/$)` : quote.currency || 'USD'}
+                  {quote.currency || (isIndianAsset(quote.symbol) ? 'INR' : 'USD')}
                 </span>
               </div>
             </div>

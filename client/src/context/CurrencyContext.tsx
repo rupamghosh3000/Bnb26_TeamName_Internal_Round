@@ -3,6 +3,28 @@ import { api } from '../services/api';
 
 export type SupportedCurrency = 'USD' | 'INR';
 
+export interface CurrencyFormatOptions {
+  decimals?: number;
+  compact?: boolean;
+  fromCurrency?: 'USD' | 'INR';
+  symbol?: string;
+}
+
+export function isIndianAsset(symbol?: string, currency?: string): boolean {
+  if (currency === 'INR') return true;
+  if (!symbol) return false;
+  const s = symbol.trim().toUpperCase();
+  return (
+    s.endsWith('.NS') ||
+    s.endsWith('.BO') ||
+    s.startsWith('^NSE') ||
+    s.startsWith('^BSE') ||
+    s.includes('NIFTY') ||
+    s.includes('SENSEX') ||
+    s === 'INR'
+  );
+}
+
 interface CurrencyContextType {
   currency: SupportedCurrency;
   setCurrency: (c: SupportedCurrency) => void;
@@ -11,8 +33,11 @@ interface CurrencyContextType {
   rateChange: number;
   loadingRate: boolean;
   symbol: string;
-  formatAmount: (amountInUSD: number | undefined | null, options?: { decimals?: number; compact?: boolean }) => string;
-  convert: (amountInUSD: number) => number;
+  isIndianAsset: (symbol?: string, currency?: string) => boolean;
+  formatAmount: (amountInUSD: number | undefined | null, options?: CurrencyFormatOptions) => string;
+  formatStockPrice: (price: number | undefined | null, symbol?: string, assetCurrency?: string, options?: CurrencyFormatOptions) => string;
+  convertStockPrice: (price: number, symbol?: string, assetCurrency?: string) => number;
+  convert: (amount: number, fromCurrency?: 'USD' | 'INR') => number;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
@@ -35,7 +60,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setRateChange(data.changePercent || 0);
       }
     } catch {
-      // Fallback rate is kept
+      // Keep fallback
     } finally {
       setLoadingRate(false);
     }
@@ -57,35 +82,48 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCurrency(next);
   };
 
-  const convert = (amountInUSD: number): number => {
-    if (isNaN(amountInUSD)) return 0;
-    return currency === 'INR' ? amountInUSD * rate : amountInUSD;
+  const convert = (amount: number, fromCurrency: 'USD' | 'INR' = 'USD'): number => {
+    if (isNaN(amount)) return 0;
+    if (fromCurrency === 'USD') {
+      return currency === 'INR' ? amount * rate : amount;
+    } else {
+      // fromCurrency === 'INR'
+      return currency === 'USD' ? (rate > 0 ? amount / rate : amount) : amount;
+    }
   };
 
-  const formatAmount = (
-    amountInUSD: number | undefined | null,
-    options?: { decimals?: number; compact?: boolean }
-  ): string => {
-    if (amountInUSD == null || isNaN(amountInUSD)) {
-      return currency === 'INR' ? '₹0.00' : '$0.00';
+  const convertStockPrice = (price: number, stockSymbol?: string, assetCurrency?: string): number => {
+    if (isNaN(price)) return 0;
+    const isIndian = isIndianAsset(stockSymbol, assetCurrency);
+    if (isIndian) {
+      // Raw price is in INR
+      return currency === 'USD' ? (rate > 0 ? price / rate : price) : price;
+    } else {
+      // Raw price is in USD
+      return currency === 'INR' ? price * rate : price;
     }
+  };
 
-    const decimals = options?.decimals ?? 2;
-    const compact = options?.compact ?? false;
+  const formatNumber = (
+    num: number,
+    targetCurrency: SupportedCurrency,
+    decimals: number = 2,
+    compact: boolean = false
+  ): string => {
+    const isNegative = num < 0;
+    const absVal = Math.abs(num);
 
-    if (currency === 'INR') {
-      const inrVal = amountInUSD * rate;
+    if (targetCurrency === 'INR') {
       if (compact) {
-        const absVal = Math.abs(inrVal);
         if (absVal >= 10000000) {
-          // Crores (Cr)
-          return `₹${(inrVal / 10000000).toFixed(decimals)} Cr`;
+          return `${isNegative ? '-' : ''}₹${(absVal / 10000000).toFixed(decimals)} Cr`;
         } else if (absVal >= 100000) {
-          // Lakhs (L)
-          return `₹${(inrVal / 100000).toFixed(decimals)} L`;
+          return `${isNegative ? '-' : ''}₹${(absVal / 100000).toFixed(decimals)} L`;
+        } else if (absVal >= 1000) {
+          return `${isNegative ? '-' : ''}₹${(absVal / 1000).toFixed(decimals)}K`;
         }
       }
-      return `₹${inrVal.toLocaleString('en-IN', {
+      return `${isNegative ? '-' : ''}₹${absVal.toLocaleString('en-IN', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       })}`;
@@ -93,20 +131,59 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // USD
     if (compact) {
-      const absVal = Math.abs(amountInUSD);
       if (absVal >= 1000000000) {
-        return `$${(amountInUSD / 1000000000).toFixed(decimals)}B`;
+        return `${isNegative ? '-' : ''}$${(absVal / 1000000000).toFixed(decimals)}B`;
       } else if (absVal >= 1000000) {
-        return `$${(amountInUSD / 1000000).toFixed(decimals)}M`;
+        return `${isNegative ? '-' : ''}$${(absVal / 1000000).toFixed(decimals)}M`;
       } else if (absVal >= 1000) {
-        return `$${(amountInUSD / 1000).toFixed(decimals)}K`;
+        return `${isNegative ? '-' : ''}$${(absVal / 1000).toFixed(decimals)}K`;
       }
     }
-
-    return `$${amountInUSD.toLocaleString('en-US', {
+    return `${isNegative ? '-' : ''}$${absVal.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     })}`;
+  };
+
+  const formatStockPrice = (
+    price: number | undefined | null,
+    stockSymbol?: string,
+    assetCurrency?: string,
+    options?: CurrencyFormatOptions
+  ): string => {
+    if (price == null || isNaN(price)) {
+      return currency === 'INR' ? '₹0.00' : '$0.00';
+    }
+
+    const decimals = options?.decimals ?? 2;
+    const compact = options?.compact ?? false;
+    const converted = convertStockPrice(price, stockSymbol, assetCurrency);
+    return formatNumber(converted, currency, decimals, compact);
+  };
+
+  const formatAmount = (
+    amount: number | undefined | null,
+    options?: CurrencyFormatOptions
+  ): string => {
+    if (amount == null || isNaN(amount)) {
+      return currency === 'INR' ? '₹0.00' : '$0.00';
+    }
+
+    const decimals = options?.decimals ?? 2;
+    const compact = options?.compact ?? false;
+
+    // Check if options explicitly passed symbol or fromCurrency
+    if (options?.symbol || options?.fromCurrency) {
+      const isIndian = options.fromCurrency === 'INR' || isIndianAsset(options.symbol);
+      const converted = isIndian
+        ? (currency === 'USD' ? (rate > 0 ? amount / rate : amount) : amount)
+        : (currency === 'INR' ? amount * rate : amount);
+      return formatNumber(converted, currency, decimals, compact);
+    }
+
+    // Default: Input amount is in USD base (e.g. portfolio equity, cash balance, P&L)
+    const converted = currency === 'INR' ? amount * rate : amount;
+    return formatNumber(converted, currency, decimals, compact);
   };
 
   return (
@@ -119,7 +196,10 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         rateChange,
         loadingRate,
         symbol: currency === 'INR' ? '₹' : '$',
+        isIndianAsset,
         formatAmount,
+        formatStockPrice,
+        convertStockPrice,
         convert,
       }}
     >
