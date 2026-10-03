@@ -1,10 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { config } from './config/environment.js';
 import { connectDB } from './config/db.js';
 import { errorHandler } from './middleware/errorHandler.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -85,6 +91,21 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/strategies', strategyRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/ai', aiRoutes);
+
+// Serve static frontend in production (Render deployment)
+const clientDist = path.resolve(__dirname, '../../client/dist');
+if (fs.existsSync(clientDist)) {
+  console.log(`[StockPulse Server] Serving static frontend from ${clientDist}`);
+  app.use(express.static(clientDist));
+
+  // SPA fallback for all non-API GET routes
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'API route not found' });
+    }
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use(errorHandler);
