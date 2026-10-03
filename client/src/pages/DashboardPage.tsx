@@ -19,11 +19,13 @@ import { AllocationPieChart } from '../components/charts/AllocationPieChart';
 import { FreshnessBadge } from '../components/common/Badge';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 export const DashboardPage: React.FC<{ onOpenQuickTrade: (symbol?: string) => void }> = ({
   onOpenQuickTrade,
 }) => {
   const { account, refreshAccount } = useAuth();
+  const { formatAmount } = useCurrency();
   const [portfolio, setPortfolio] = useState<any>(null);
   const [performance, setPerformance] = useState<any[]>([]);
   const [marketOverview, setMarketOverview] = useState<any>(null);
@@ -104,27 +106,27 @@ export const DashboardPage: React.FC<{ onOpenQuickTrade: (symbol?: string) => vo
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Portfolio Value"
-          value={`$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatAmount(totalValue)}
           change={returnPercent}
-          changeText={`Base: $${startingCash.toLocaleString()}`}
+          changeText={`Base: ${formatAmount(startingCash)}`}
           icon={<Wallet className="w-5 h-5" />}
         />
         <StatCard
           title="Total Net P&L"
-          value={`${totalPnL >= 0 ? '+' : ''}$${totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={`${totalPnL >= 0 ? '+' : '-'}${formatAmount(Math.abs(totalPnL))}`}
           change={returnPercent}
           changeText={`${returnPercent >= 0 ? '+' : ''}${returnPercent.toFixed(2)}% net`}
           icon={totalPnL >= 0 ? <TrendingUp className="w-5 h-5 text-emerald-600" /> : <TrendingDown className="w-5 h-5 text-rose-600" />}
         />
         <StatCard
           title="Virtual Cash Buffer"
-          value={`$${cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatAmount(cashBalance)}
           changeText={`${portfolio?.cashExposurePercent?.toFixed(1) || 100}% allocation`}
           icon={<Activity className="w-5 h-5" />}
         />
         <StatCard
           title="Invested Capital"
-          value={`$${(portfolio?.investedValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatAmount(portfolio?.investedValue || 0)}
           changeText={`${portfolio?.positionsCount || 0} active positions`}
           icon={<Layers className="w-5 h-5" />}
         />

@@ -65,6 +65,7 @@ class ApiClient {
     getSentiment: (symbol: string) => this.request<any>(`/markets/${encodeURIComponent(symbol)}/sentiment`),
     getStatus: () => this.request<any>('/markets/status'),
     getOverview: () => this.request<any>('/markets/overview'),
+    getForexRate: () => this.request<{ base: string; target: string; rate: number; changePercent?: number }>('/markets/forex/usd-inr'),
   };
 
   // Trading & Orders

@@ -500,6 +500,20 @@ export class AIService {
     // STEP A: Resolve Any Stock / Entity Symbols in the Query
     const resolvedSymbols = await this.extractAndResolveSymbols(rawText);
 
+    // STEP B0: Indian Rupee (INR) & Currency Conversion Inquiries
+    if (
+      textLower.includes('rupee') ||
+      textLower.includes('rupees') ||
+      textLower.includes('inr') ||
+      textLower.includes('convert to inr') ||
+      textLower.includes('convert to indian') ||
+      textLower.includes('exchange rate') ||
+      textLower.includes('usd to inr') ||
+      textLower.includes('dollar to rupee')
+    ) {
+      return this.handleCurrencyConversionQuery(userId, rawText, resolvedSymbols);
+    }
+
     // STEP B: Specific Stock Buy Advice ("Should I buy Tesla?", "Is NVDA a good buy?", "Is Apple a buy right now?")
     if (
       (textLower.includes('should i buy') ||
@@ -1673,6 +1687,133 @@ export class AIService {
 
     await this.recordAnalysis(userId, 'NATURAL_QUERY', 'GENERAL_INQUIRY', { prompt: rawText }, result);
     return result;
+  }
+
+  // Helper 15: Indian Rupee (INR) & Forex Conversion Engine
+  private async handleCurrencyConversionQuery(
+    userId: string,
+    rawText: string,
+    resolvedSymbols: string[]
+  ): Promise<AIResponse> {
+    let rate = 84.5;
+    let rateChange = 0;
+    try {
+      const forex = await marketProvider.getQuote('USDINR=X');
+      if (forex.price > 0) {
+        rate = forex.price;
+        rateChange = forex.changePercent;
+      }
+    } catch {
+      // fallback rate
+    }
+
+    const textLower = rawText.toLowerCase();
+
+    // Case 1: Specific Stock in INR
+    if (resolvedSymbols.length > 0) {
+      const sym = resolvedSymbols[0];
+      const quote = await marketProvider.getQuote(sym);
+      const priceINR = quote.price * rate;
+      const dayHighINR = (quote.dayHigh ?? quote.price) * rate;
+      const dayLowINR = (quote.dayLow ?? quote.price) * rate;
+
+      const observations = [
+        `Live Exchange Rate: 1 USD = ₹${rate.toFixed(2)} INR.`,
+        `Security: ${quote.name || sym} (${sym}).`,
+        `USD Price: $${quote.price.toFixed(2)} (${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%).`,
+        `INR Equivalent: ₹${priceINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+      ];
+
+      const answer = `### **${quote.name || sym} (${sym})** — Indian Rupee (INR) Valuation\n\n` +
+        `- **Live Price in USD:** **$${quote.price.toFixed(2)}** (${quote.changePercent >= 0 ? '🟢 +' : '🔴 '}${quote.changePercent.toFixed(2)}% today)\n` +
+        `- **Live Exchange Rate:** **1 USD = ₹${rate.toFixed(2)} INR**\n` +
+        `- **Equivalent Price in Indian Rupees:** **₹${priceINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}**\n\n` +
+        `**Intraday Range in INR:**\n` +
+        `- **Day High:** ₹${dayHighINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+        `- **Day Low:** ₹${dayLowINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n\n` +
+        `*Tip: You can also toggle the global currency switcher in the top navigation bar to view all prices across StockPulse in Indian Rupees (₹).*`;
+
+      return {
+        answer,
+        observations,
+        sources: ['Yahoo Finance Realtime Forex (USDINR=X)', 'StockPulse Market Data'],
+        uncertainty: 'Currency conversions reflect live forex exchange rates subject to market fluctuations.',
+        metrics: { symbol: sym, priceUSD: quote.price, priceINR, exchangeRate: rate },
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    // Case 2: Portfolio Valuation in INR
+    if (textLower.includes('portfolio') || textLower.includes('cash') || textLower.includes('balance') || textLower.includes('holding')) {
+      const summary = await portfolioService.getPortfolioSummary(userId);
+      const totalINR = summary.totalValue * rate;
+      const cashINR = summary.cashBalance * rate;
+      const investedINR = summary.investedValue * rate;
+      const pnlINR = summary.unrealizedPnL * rate;
+
+      const observations = [
+        `Live Exchange Rate: 1 USD = ₹${rate.toFixed(2)} INR.`,
+        `Total Portfolio (USD): $${summary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}.`,
+        `Total Portfolio (INR): ₹${totalINR.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (~₹${(totalINR / 100000).toFixed(2)} Lakhs).`,
+      ];
+
+      const answer = `### Your Portfolio Valuation in Indian Rupees (INR)\n\n` +
+        `At the live conversion rate of **1 USD = ₹${rate.toFixed(2)} INR**:\n\n` +
+        `- **Total Portfolio Equity:** **₹${totalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}** (~₹${(totalINR / 100000).toFixed(2)} Lakhs / ₹${(totalINR / 10000000).toFixed(3)} Crores) ($${summary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })})\n` +
+        `- **Available Virtual Cash:** **₹${cashINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}** ($${summary.cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })})\n` +
+        `- **Invested Capital:** **₹${investedINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}**\n` +
+        `- **Unrealized P&L:** **${pnlINR >= 0 ? '🟢 +' : '🔴 '}₹${pnlINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}** (${summary.returnPercent.toFixed(2)}%)\n\n` +
+        `*Use the **$ USD / ₹ INR** toggle button in the top navigation bar to seamlessly view all dashboard figures in Rupees.*`;
+
+      return {
+        answer,
+        observations,
+        sources: ['Yahoo Finance USDINR=X', 'StockPulse Portfolio Ledger'],
+        uncertainty: 'Forex conversions are calculated dynamically based on live market spot rates.',
+        metrics: { totalINR, cashINR, rate },
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    // Case 3: Specific numerical dollar amount in query (e.g. "convert $100k" or "$500 to rupees")
+    const dollarMatch = rawText.match(/\$?\s*([0-9,]+(?:\.[0-9]+)?)\s*(?:k|thousand|m|million|usd|dollars)?/i);
+    let sampleUSD = 1000;
+    if (dollarMatch && dollarMatch[1]) {
+      let num = parseFloat(dollarMatch[1].replace(/,/g, ''));
+      if (rawText.toLowerCase().includes('k') || rawText.toLowerCase().includes('thousand')) num *= 1000;
+      if (rawText.toLowerCase().includes('m') || rawText.toLowerCase().includes('million')) num *= 1000000;
+      if (!isNaN(num) && num > 0) sampleUSD = num;
+    }
+
+    const sampleINR = sampleUSD * rate;
+
+    const observations = [
+      `Spot Forex Rate: 1 USD = ₹${rate.toFixed(2)} INR (${rateChange >= 0 ? '+' : ''}${rateChange.toFixed(2)}% today).`,
+      `USD Amount: $${sampleUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}.`,
+      `INR Equivalent: ₹${sampleINR.toLocaleString('en-IN', { minimumFractionDigits: 2 })}.`,
+    ];
+
+    const answer = `### USD to Indian Rupee (INR) Conversion & Exchange Rates\n\n` +
+      `- **Live Spot Exchange Rate:** **1 USD = ₹${rate.toFixed(2)} INR**\n` +
+      `- **Converted Amount:** **$${sampleUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD** = **₹${sampleINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR** (~₹${(sampleINR / 100000).toFixed(2)} Lakhs)\n\n` +
+      `**Quick Reference Conversion Table:**\n\n` +
+      `| US Dollars (USD) | Indian Rupees (INR) | In Indian Units |\n` +
+      `| :--- | :--- | :--- |\n` +
+      `| **$10** | ₹${(10 * rate).toFixed(2)} | — |\n` +
+      `| **$100** | ₹${(100 * rate).toFixed(2)} | — |\n` +
+      `| **$1,000** | ₹${(1000 * rate).toLocaleString('en-IN', { maximumFractionDigits: 0 })} | ~₹${((1000 * rate) / 100000).toFixed(2)} Lakhs |\n` +
+      `| **$10,000** | ₹${(10000 * rate).toLocaleString('en-IN', { maximumFractionDigits: 0 })} | ~₹${((10000 * rate) / 100000).toFixed(2)} Lakhs |\n` +
+      `| **$100,000** | ₹${(100000 * rate).toLocaleString('en-IN', { maximumFractionDigits: 0 })} | ~₹${((100000 * rate) / 10000000).toFixed(2)} Crores (₹${((100000 * rate) / 100000).toFixed(1)}L) |\n\n` +
+      `*You can switch between **USD ($)** and **INR (₹)** across the entire StockPulse platform at any time using the currency toggle in the top header.*`;
+
+    return {
+      answer,
+      observations,
+      sources: ['Yahoo Finance Realtime Forex (USDINR=X)'],
+      uncertainty: 'Real-time exchange rate based on global interbank currency spot quotes.',
+      metrics: { rate, sampleUSD, sampleINR },
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   // Persistence record

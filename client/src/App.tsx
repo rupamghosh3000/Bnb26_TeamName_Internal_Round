@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import { Navbar } from './components/common/Navbar';
 import { QuickTradeModal } from './components/common/QuickTradeModal';
 import { AIAssistantDrawer } from './components/ai/AIAssistantDrawer';
@@ -166,7 +167,9 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <MainLayout />
+        <CurrencyProvider>
+          <MainLayout />
+        </CurrencyProvider>
       </AuthProvider>
     </BrowserRouter>
   );

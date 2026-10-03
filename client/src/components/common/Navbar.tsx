@@ -12,11 +12,13 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCurrency } from '../../context/CurrencyContext';
 import { api } from '../../services/api';
 import { SearchModal } from './SearchModal';
 
 export const Navbar: React.FC<{ onOpenQuickTrade?: () => void }> = ({ onOpenQuickTrade }) => {
   const { user, account, logout } = useAuth();
+  const { currency, setCurrency, rate, formatAmount } = useCurrency();
   const location = useLocation();
   const navigate = useNavigate();
   const [marketStatus, setMarketStatus] = useState<any>(null);
@@ -128,6 +130,33 @@ export const Navbar: React.FC<{ onOpenQuickTrade?: () => void }> = ({ onOpenQuic
               </kbd>
             </button>
 
+            {/* Currency Switcher Pill [ $ USD | ₹ INR ] */}
+            <div
+              className="flex items-center p-0.5 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-xs"
+              title={`Live Forex Rate: 1 USD = ₹${rate.toFixed(2)} INR`}
+            >
+              <button
+                onClick={() => setCurrency('USD')}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+                  currency === 'USD'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                $ USD
+              </button>
+              <button
+                onClick={() => setCurrency('INR')}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 ${
+                  currency === 'INR'
+                    ? 'bg-gradient-to-r from-orange-500 to-emerald-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>₹ INR</span>
+              </button>
+            </div>
+
             {user ? (
               <>
                 {/* Virtual Cash Balance Pill */}
@@ -138,7 +167,7 @@ export const Navbar: React.FC<{ onOpenQuickTrade?: () => void }> = ({ onOpenQuic
                       Virtual Cash
                     </span>
                     <span className="text-xs font-extrabold text-slate-900 font-mono">
-                      ${account ? account.cashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '100,000.00'}
+                      {formatAmount(account ? account.cashBalance : 100000)}
                     </span>
                   </div>
                 </div>

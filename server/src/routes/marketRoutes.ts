@@ -70,6 +70,32 @@ router.get('/overview', async (req, res, next) => {
   }
 });
 
+// Forex USD to INR live rate
+router.get('/forex/usd-inr', async (req, res) => {
+  try {
+    const quote = await marketProvider.getQuote('USDINR=X');
+    res.json({
+      base: 'USD',
+      target: 'INR',
+      rate: quote.price > 0 ? quote.price : 84.5,
+      change: quote.change,
+      changePercent: quote.changePercent,
+      timestamp: quote.timestamp,
+      freshness: quote.freshness,
+    });
+  } catch {
+    res.json({
+      base: 'USD',
+      target: 'INR',
+      rate: 84.5,
+      change: 0,
+      changePercent: 0,
+      timestamp: new Date().toISOString(),
+      freshness: 'DEFAULT',
+    });
+  }
+});
+
 // Symbol quote
 router.get('/:symbol/quote', async (req, res, next) => {
   try {

@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, TrendingUp, TrendingDown, ArrowRight, Zap, RefreshCw } from 'lucide-react';
 import { FreshnessBadge } from '../components/common/Badge';
+import { CurrencyConverterWidget } from '../components/common/CurrencyConverterWidget';
+import { useCurrency } from '../context/CurrencyContext';
 import { api } from '../services/api';
 
 export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void }> = ({
   onOpenQuickTrade,
 }) => {
+  const { formatAmount } = useCurrency();
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [popularQuotes, setPopularQuotes] = useState<any[]>([]);
@@ -108,6 +111,9 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
         )}
       </div>
 
+      {/* Currency Converter & Rupee Calculator */}
+      <CurrencyConverterWidget />
+
       {/* Grid of Monitored Assets */}
       <div>
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
@@ -149,7 +155,7 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
                 <div className="pt-2 border-t border-slate-100 flex items-end justify-between">
                   <div>
                     <span className="font-mono font-extrabold text-2xl text-slate-900 block">
-                      ${q.price.toFixed(2)}
+                      {formatAmount(q.price)}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       Vol: {q.volume.toLocaleString()}
@@ -162,7 +168,7 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
                       <span>{isUp ? '+' : ''}{q.changePercent.toFixed(2)}%</span>
                     </div>
                     <span className="text-[10px] block opacity-80">
-                      {isUp ? '+' : ''}${q.change.toFixed(2)}
+                      {isUp ? '+' : '-'}{formatAmount(Math.abs(q.change))}
                     </span>
                   </div>
                 </div>

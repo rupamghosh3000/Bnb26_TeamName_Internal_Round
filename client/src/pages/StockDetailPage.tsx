@@ -19,6 +19,7 @@ import { StockChart } from '../components/charts/StockChart';
 import { FreshnessBadge, SentimentBadge } from '../components/common/Badge';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void }> = ({
   onOpenQuickTrade,
@@ -26,6 +27,7 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
   const { symbol = 'AAPL' } = useParams<{ symbol: string }>();
   const cleanSymbol = symbol.toUpperCase();
   const { user } = useAuth();
+  const { currency, formatAmount, rate } = useCurrency();
 
   const [quote, setQuote] = useState<any>(null);
   const [news, setNews] = useState<any[]>([]);
@@ -155,12 +157,17 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
         <div className="flex items-center justify-between md:justify-end gap-6">
           <div className="text-right">
             <div className="text-3xl font-black text-slate-900 font-mono tracking-tight">
-              ${quote.price.toFixed(2)}
+              {formatAmount(quote.price)}
             </div>
-            <div className={`text-xs font-bold flex items-center justify-end gap-1 ${isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+            <div className="text-[11px] font-mono text-slate-400 font-medium">
+              {currency === 'INR'
+                ? `($${quote.price.toFixed(2)} USD)`
+                : `(≈ ₹${(quote.price * rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })} INR)`}
+            </div>
+            <div className={`text-xs font-bold flex items-center justify-end gap-1 mt-0.5 ${isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
               {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               <span>
-                {isUp ? '+' : ''}${quote.change.toFixed(2)} ({isUp ? '+' : ''}{quote.changePercent.toFixed(2)}%)
+                {isUp ? '+' : '-'}{formatAmount(Math.abs(quote.change))} ({isUp ? '+' : ''}{quote.changePercent.toFixed(2)}%)
               </span>
             </div>
           </div>
