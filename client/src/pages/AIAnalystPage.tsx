@@ -12,6 +12,7 @@ import {
   Search,
 } from 'lucide-react';
 import { api } from '../services/api';
+import { FormattedAIMessage } from '../components/ai/FormattedAIMessage';
 
 export const AIAnalystPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chat' | 'brief' | 'why' | 'portfolio'>('chat');
@@ -137,7 +138,11 @@ export const AIAnalystPage: React.FC = () => {
                       : 'bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-sm shadow-soft'
                   }`}
                 >
-                  <p>{m.text}</p>
+                  {m.sender === 'user' ? (
+                    <p>{m.text}</p>
+                  ) : (
+                    <FormattedAIMessage content={m.text} />
+                  )}
 
                   {/* Grounded Facts */}
                   {m.data?.observations && (
@@ -176,10 +181,12 @@ export const AIAnalystPage: React.FC = () => {
           {/* Quick Questions */}
           <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2">
             {[
-              'What is my total portfolio value?',
-              'What is my portfolio concentration risk?',
-              'Why did AAPL move today?',
-              'Show me latest news about NVDA',
+              'Can I buy 5 shares of NVDA?',
+              'Compare Apple and Microsoft',
+              'What is a P/E ratio?',
+              'What are my current holdings?',
+              'What is my portfolio risk?',
+              'Why did TSLA move recently?',
             ].map((prompt, idx) => (
               <button
                 key={idx}
@@ -232,9 +239,9 @@ export const AIAnalystPage: React.FC = () => {
 
           {marketBrief ? (
             <div className="space-y-4">
-              <p className="text-sm text-slate-800 leading-relaxed font-medium">
-                {marketBrief.answer}
-              </p>
+              <div className="text-sm text-slate-800 leading-relaxed font-medium">
+                <FormattedAIMessage content={marketBrief.answer} />
+              </div>
 
               <div className="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
@@ -290,9 +297,9 @@ export const AIAnalystPage: React.FC = () => {
 
           {whyResult && (
             <div className="space-y-4 pt-4 border-t border-slate-100 animate-in fade-in duration-300">
-              <p className="text-sm text-slate-800 leading-relaxed font-medium">
-                {whyResult.answer}
-              </p>
+              <div className="text-sm text-slate-800 leading-relaxed font-medium">
+                <FormattedAIMessage content={whyResult.answer} />
+              </div>
 
               {whyResult.observations && (
                 <div className="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">
@@ -340,9 +347,9 @@ export const AIAnalystPage: React.FC = () => {
 
           {portfolioAnalysis ? (
             <div className="space-y-4 pt-4 border-t border-slate-100">
-              <p className="text-sm text-slate-800 leading-relaxed font-medium">
-                {portfolioAnalysis.answer}
-              </p>
+              <div className="text-sm text-slate-800 leading-relaxed font-medium">
+                <FormattedAIMessage content={portfolioAnalysis.answer} />
+              </div>
 
               {portfolioAnalysis.observations && (
                 <div className="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">

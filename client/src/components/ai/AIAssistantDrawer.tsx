@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, X, Send, Bot, Loader2, Info, ChevronRight } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { FormattedAIMessage } from './FormattedAIMessage';
 
 export const AIAssistantDrawer: React.FC = () => {
   const { user } = useAuth();
@@ -11,7 +12,7 @@ export const AIAssistantDrawer: React.FC = () => {
   const [history, setHistory] = useState<Array<{ sender: 'user' | 'ai'; text: string; data?: any }>>([
     {
       sender: 'ai',
-      text: 'Hello! I am your StockPulse Market Intelligence Assistant. I query real application data to analyze market movements, risk parameters, and portfolio allocations.',
+      text: 'Hello! I am your StockPulse Market Intelligence Assistant. Ask me anything about stock prices, portfolio purchasing power, market comparisons, financial concepts (like P/E or RSI), risk, or recent trades.',
     },
   ]);
 
@@ -50,10 +51,12 @@ export const AIAssistantDrawer: React.FC = () => {
   };
 
   const samplePrompts = [
-    'Summarize broad market condition',
-    'What is my portfolio valuation & risk?',
-    'Why did AAPL move recently?',
-    'What was the outcome of my last trade?',
+    'Can I buy 5 shares of NVDA?',
+    'Compare Apple and Microsoft',
+    'What is a P/E ratio?',
+    'What are my current holdings?',
+    'What is my portfolio risk?',
+    'Why did TSLA move recently?',
   ];
 
   return (
@@ -105,13 +108,17 @@ export const AIAssistantDrawer: React.FC = () => {
                   }`}
                 >
                   <div
-                    className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                    className={`max-w-[92%] rounded-2xl p-3.5 text-xs leading-relaxed ${
                       msg.sender === 'user'
                         ? 'bg-brand-primary text-white font-medium rounded-tr-sm shadow-sm'
                         : 'bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-sm shadow-soft'
                     }`}
                   >
-                    <p>{msg.text}</p>
+                    {msg.sender === 'user' ? (
+                      <p>{msg.text}</p>
+                    ) : (
+                      <FormattedAIMessage content={msg.text} />
+                    )}
 
                     {/* Grounded Observations */}
                     {msg.data?.observations && msg.data.observations.length > 0 && (
