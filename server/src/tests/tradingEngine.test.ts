@@ -20,8 +20,8 @@ test('1. Technical Indicators & Sentiment Analysis', async (t) => {
     const prices = [100, 102, 104, 103, 105, 107, 110, 108, 107, 109, 112, 115, 114, 116, 118, 120];
     const rsi = calculateRSI(prices, 14);
     const lastRsi = rsi[rsi.length - 1];
-    assert.ok(lastRsi !== null);
-    assert.ok(lastRsi >= 0 && lastRsi <= 100);
+    assert.ok(lastRsi !== null && lastRsi !== undefined);
+    assert.ok(lastRsi !== null && lastRsi >= 0 && lastRsi <= 100);
   });
 
   await t.test('analyzeTextSentiment classifies financial headlines deterministically', () => {

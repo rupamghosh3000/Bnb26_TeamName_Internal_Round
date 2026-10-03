@@ -9,7 +9,7 @@ import { config } from './config/environment.js';
 import { connectDB } from './config/db.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = fileURLToPath((import.meta as any).url);
 const __dirname = path.dirname(__filename);
 
 // Route imports
