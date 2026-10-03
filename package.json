@@ -1,0 +1,17 @@
+{
+  "name": "stockpulse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StockPulse - Real Market Data + Paper Trading + AI Market Intelligence + Strategy Lab + Risk Analytics",
+  "scripts": {
+    "dev": "concurrently -k -n \"SERVER,CLIENT\" -c \"magenta,cyan\" \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "test": "npm --prefix server test",
+    "start": "npm --prefix server start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
