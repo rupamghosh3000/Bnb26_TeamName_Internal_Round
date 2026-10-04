@@ -62,6 +62,25 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     SUI: 'SUI-USD',
     APT: 'APT-USD',
     PEPE: 'PEPE-USD',
+    BONK: 'BONK-USD',
+    WIF: 'WIF-USD',
+    RENDER: 'RENDER-USD',
+    RNDR: 'RENDER-USD',
+    FET: 'FET-USD',
+    TAO: 'TAO-USD',
+    INJ: 'INJ-USD',
+    KAS: 'KAS-USD',
+    ARB: 'ARB-USD',
+    OP: 'OP-USD',
+    TIA: 'TIA-USD',
+    SEI: 'SEI-USD',
+    AAVE: 'AAVE-USD',
+    MKR: 'MKR-USD',
+    ATOM: 'ATOM-USD',
+    FIL: 'FIL-USD',
+    TON: 'TON-USD',
+    TRX: 'TRX-USD',
+    JUP: 'JUP-USD',
   };
 
   private normalizeSymbol(symbol: string): string {
@@ -78,78 +97,25 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
   }
 
   async getQuote(symbol: string): Promise<Quote> {
-    const cleanSymbol = this.normalizeSymbol(symbol);
+    let cleanSymbol = this.normalizeSymbol(symbol);
     const cacheKey = `quote_${cleanSymbol}`;
     const cached = this.getFromCache<Quote>(cacheKey);
     if (cached) return cached;
 
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanSymbol)}?interval=1d&range=1d`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': this.userAgent, Accept: 'application/json' },
-      });
-
-      if (!res.ok) {
-        throw new Error(`Market provider returned HTTP ${res.status} for ${cleanSymbol}`);
-      }
-
-      const json: any = await res.json();
-      const result = json.chart?.result?.[0];
-      if (!result) {
-        throw new Error(`No market data found for symbol "${cleanSymbol}"`);
-      }
-
-      const meta = result.meta;
-      const currentPrice = meta.regularMarketPrice ?? meta.previousClose ?? 0;
-      const prevClose = meta.previousClose ?? meta.chartPreviousClose ?? currentPrice;
-      const change = currentPrice - prevClose;
-      const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
-
-      const isCrypto = meta.instrumentType === 'CRYPTOCURRENCY' || this.isCryptoSymbol(cleanSymbol);
-
-      // Determine freshness
-      let freshness: FreshnessType = 'DELAYED';
-      const nowSec = Math.floor(Date.now() / 1000);
-      const marketTime = meta.regularMarketTime || nowSec;
-      const isRecent = Math.abs(nowSec - marketTime) < 300; // within 5 mins
-
-      if (isCrypto) {
-        // Crypto trades 24/7/365
-        freshness = isRecent ? 'LIVE' : 'DELAYED';
-      } else {
-        const tradingPeriod = meta.currentTradingPeriod?.regular;
-        if (tradingPeriod && nowSec >= tradingPeriod.start && nowSec <= tradingPeriod.end) {
-          freshness = isRecent ? 'LIVE' : 'DELAYED';
-        } else {
-          freshness = 'MARKET_CLOSED';
+      return await this.fetchDirectQuote(cleanSymbol);
+    } catch (primaryErr: any) {
+      // If symbol does not have an exchange suffix or -USD, try appending -USD for crypto auto-discovery
+      if (!cleanSymbol.includes('-') && !cleanSymbol.includes('.')) {
+        try {
+          const cryptoQuote = await this.fetchDirectQuote(`${cleanSymbol}-USD`);
+          this.setCache(cacheKey, cryptoQuote, 10);
+          return cryptoQuote;
+        } catch {
+          // Keep original error
         }
       }
 
-      // Format decimals appropriately for micro-value crypto coins
-      const decimals = currentPrice < 1 && currentPrice > 0 ? (currentPrice < 0.01 ? 6 : 4) : 2;
-
-      const quote: Quote = {
-        symbol: cleanSymbol,
-        name: meta.longName || meta.shortName || (isCrypto ? cleanSymbol.replace('-USD', '') : cleanSymbol),
-        price: Number(currentPrice.toFixed(decimals)),
-        previousClose: Number(prevClose.toFixed(decimals)),
-        change: Number(change.toFixed(decimals)),
-        changePercent: Number(changePercent.toFixed(2)),
-        volume: meta.regularMarketVolume || 0,
-        dayHigh: meta.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(decimals)) : undefined,
-        dayLow: meta.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(decimals)) : undefined,
-        fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(decimals)) : undefined,
-        fiftyTwoWeekLow: meta.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(decimals)) : undefined,
-        currency: meta.currency || (isCrypto ? 'USD' : 'USD'),
-        exchange: isCrypto ? 'Crypto (24/7)' : (meta.exchangeName || 'NASDAQ'),
-        timestamp: new Date((meta.regularMarketTime || nowSec) * 1000).toISOString(),
-        source: isCrypto ? 'Yahoo Crypto Stream (24/7)' : 'Yahoo Finance (Direct Stream)',
-        freshness,
-      };
-
-      this.setCache(cacheKey, quote, 10); // 10s TTL
-      return quote;
-    } catch (err: any) {
       // Check if stale cached quote exists
       const stale = this.cache.get(cacheKey)?.data as Quote;
       if (stale) {
@@ -159,8 +125,76 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
           source: `${stale.source} (Stale Cached)`,
         };
       }
-      throw err;
+      throw primaryErr;
     }
+  }
+
+  private async fetchDirectQuote(cleanSymbol: string): Promise<Quote> {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanSymbol)}?interval=1d&range=1d`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': this.userAgent, Accept: 'application/json' },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Market provider returned HTTP ${res.status} for ${cleanSymbol}`);
+    }
+
+    const json: any = await res.json();
+    const result = json.chart?.result?.[0];
+    if (!result) {
+      throw new Error(`No market data found for symbol "${cleanSymbol}"`);
+    }
+
+    const meta = result.meta;
+    const currentPrice = meta.regularMarketPrice ?? meta.previousClose ?? 0;
+    const prevClose = meta.previousClose ?? meta.chartPreviousClose ?? currentPrice;
+    const change = currentPrice - prevClose;
+    const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
+
+    const isCrypto = meta.instrumentType === 'CRYPTOCURRENCY' || this.isCryptoSymbol(cleanSymbol);
+
+    // Determine freshness
+    let freshness: FreshnessType = 'DELAYED';
+    const nowSec = Math.floor(Date.now() / 1000);
+    const marketTime = meta.regularMarketTime || nowSec;
+    const isRecent = Math.abs(nowSec - marketTime) < 300; // within 5 mins
+
+    if (isCrypto) {
+      // Crypto trades 24/7/365
+      freshness = isRecent ? 'LIVE' : 'DELAYED';
+    } else {
+      const tradingPeriod = meta.currentTradingPeriod?.regular;
+      if (tradingPeriod && nowSec >= tradingPeriod.start && nowSec <= tradingPeriod.end) {
+        freshness = isRecent ? 'LIVE' : 'DELAYED';
+      } else {
+        freshness = 'MARKET_CLOSED';
+      }
+    }
+
+    // Format decimals appropriately for micro-value crypto coins
+    const decimals = currentPrice < 1 && currentPrice > 0 ? (currentPrice < 0.01 ? 6 : 4) : 2;
+
+    const quote: Quote = {
+      symbol: cleanSymbol,
+      name: meta.longName || meta.shortName || (isCrypto ? cleanSymbol.replace('-USD', '') : cleanSymbol),
+      price: Number(currentPrice.toFixed(decimals)),
+      previousClose: Number(prevClose.toFixed(decimals)),
+      change: Number(change.toFixed(decimals)),
+      changePercent: Number(changePercent.toFixed(2)),
+      volume: meta.regularMarketVolume || 0,
+      dayHigh: meta.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(decimals)) : undefined,
+      dayLow: meta.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(decimals)) : undefined,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(decimals)) : undefined,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(decimals)) : undefined,
+      currency: meta.currency || (isCrypto ? 'USD' : 'USD'),
+      exchange: isCrypto ? 'Crypto (24/7)' : (meta.exchangeName || 'NASDAQ'),
+      timestamp: new Date((meta.regularMarketTime || nowSec) * 1000).toISOString(),
+      source: isCrypto ? 'Yahoo Crypto Stream (24/7)' : 'Yahoo Finance (Direct Stream)',
+      freshness,
+    };
+
+    this.setCache(`quote_${cleanSymbol}`, quote, 10); // 10s TTL
+    return quote;
   }
 
   async getHistoricalData(

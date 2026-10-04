@@ -24,7 +24,7 @@ import { CurrencyConverterWidget } from '../components/common/CurrencyConverterW
 import { useCurrency } from '../context/CurrencyContext';
 import { api } from '../services/api';
 
-const CATEGORIES = ['All', 'Layer 1', 'DeFi', 'Meme', 'Layer 2', 'Payment'];
+const CATEGORIES = ['All', 'Layer 1', 'DeFi', 'AI & Data', 'Meme', 'Layer 2', 'Payment'];
 
 export const CryptoPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void }> = ({
   onOpenQuickTrade,
