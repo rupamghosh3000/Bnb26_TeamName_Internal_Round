@@ -27,8 +27,58 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     this.cache.set(key, { data, expiry: Date.now() + ttlSeconds * 1000 });
   }
 
+  // Recognized top crypto tickers
+  private cryptoMap: Record<string, string> = {
+    BTC: 'BTC-USD',
+    BITCOIN: 'BTC-USD',
+    ETH: 'ETH-USD',
+    ETHEREUM: 'ETH-USD',
+    SOL: 'SOL-USD',
+    SOLANA: 'SOL-USD',
+    BNB: 'BNB-USD',
+    XRP: 'XRP-USD',
+    RIPPLE: 'XRP-USD',
+    DOGE: 'DOGE-USD',
+    DOGECOIN: 'DOGE-USD',
+    ADA: 'ADA-USD',
+    CARDANO: 'ADA-USD',
+    AVAX: 'AVAX-USD',
+    AVALANCHE: 'AVAX-USD',
+    LINK: 'LINK-USD',
+    CHAINLINK: 'LINK-USD',
+    POL: 'POL-USD',
+    MATIC: 'POL-USD',
+    POLYGON: 'POL-USD',
+    SHIB: 'SHIB-USD',
+    NEAR: 'NEAR-USD',
+    DOT: 'DOT-USD',
+    POLKADOT: 'DOT-USD',
+    LTC: 'LTC-USD',
+    LITECOIN: 'LTC-USD',
+    UNI: 'UNI-USD',
+    UNISWAP: 'UNI-USD',
+    BCH: 'BCH-USD',
+    XLM: 'XLM-USD',
+    SUI: 'SUI-USD',
+    APT: 'APT-USD',
+    PEPE: 'PEPE-USD',
+  };
+
+  private normalizeSymbol(symbol: string): string {
+    const raw = symbol.trim().toUpperCase();
+    if (this.cryptoMap[raw]) {
+      return this.cryptoMap[raw];
+    }
+    return raw;
+  }
+
+  private isCryptoSymbol(symbol: string): boolean {
+    const s = symbol.toUpperCase();
+    return s.endsWith('-USD') || s.endsWith('-USDT') || !!this.cryptoMap[s];
+  }
+
   async getQuote(symbol: string): Promise<Quote> {
-    const cleanSymbol = symbol.trim().toUpperCase();
+    const cleanSymbol = this.normalizeSymbol(symbol);
     const cacheKey = `quote_${cleanSymbol}`;
     const cached = this.getFromCache<Quote>(cacheKey);
     if (cached) return cached;
@@ -55,35 +105,45 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
       const change = currentPrice - prevClose;
       const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
 
+      const isCrypto = meta.instrumentType === 'CRYPTOCURRENCY' || this.isCryptoSymbol(cleanSymbol);
+
       // Determine freshness
       let freshness: FreshnessType = 'DELAYED';
       const nowSec = Math.floor(Date.now() / 1000);
       const marketTime = meta.regularMarketTime || nowSec;
       const isRecent = Math.abs(nowSec - marketTime) < 300; // within 5 mins
 
-      const tradingPeriod = meta.currentTradingPeriod?.regular;
-      if (tradingPeriod && nowSec >= tradingPeriod.start && nowSec <= tradingPeriod.end) {
+      if (isCrypto) {
+        // Crypto trades 24/7/365
         freshness = isRecent ? 'LIVE' : 'DELAYED';
       } else {
-        freshness = 'MARKET_CLOSED';
+        const tradingPeriod = meta.currentTradingPeriod?.regular;
+        if (tradingPeriod && nowSec >= tradingPeriod.start && nowSec <= tradingPeriod.end) {
+          freshness = isRecent ? 'LIVE' : 'DELAYED';
+        } else {
+          freshness = 'MARKET_CLOSED';
+        }
       }
+
+      // Format decimals appropriately for micro-value crypto coins
+      const decimals = currentPrice < 1 && currentPrice > 0 ? (currentPrice < 0.01 ? 6 : 4) : 2;
 
       const quote: Quote = {
         symbol: cleanSymbol,
-        name: meta.longName || meta.shortName || cleanSymbol,
-        price: Number(currentPrice.toFixed(2)),
-        previousClose: Number(prevClose.toFixed(2)),
-        change: Number(change.toFixed(2)),
+        name: meta.longName || meta.shortName || (isCrypto ? cleanSymbol.replace('-USD', '') : cleanSymbol),
+        price: Number(currentPrice.toFixed(decimals)),
+        previousClose: Number(prevClose.toFixed(decimals)),
+        change: Number(change.toFixed(decimals)),
         changePercent: Number(changePercent.toFixed(2)),
         volume: meta.regularMarketVolume || 0,
-        dayHigh: meta.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : undefined,
-        dayLow: meta.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : undefined,
-        fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : undefined,
-        fiftyTwoWeekLow: meta.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : undefined,
-        currency: meta.currency || 'USD',
-        exchange: meta.exchangeName || 'NASDAQ',
+        dayHigh: meta.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(decimals)) : undefined,
+        dayLow: meta.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(decimals)) : undefined,
+        fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(decimals)) : undefined,
+        fiftyTwoWeekLow: meta.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(decimals)) : undefined,
+        currency: meta.currency || (isCrypto ? 'USD' : 'USD'),
+        exchange: isCrypto ? 'Crypto (24/7)' : (meta.exchangeName || 'NASDAQ'),
         timestamp: new Date((meta.regularMarketTime || nowSec) * 1000).toISOString(),
-        source: 'Yahoo Finance (Direct Stream)',
+        source: isCrypto ? 'Yahoo Crypto Stream (24/7)' : 'Yahoo Finance (Direct Stream)',
         freshness,
       };
 
@@ -108,7 +168,7 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     range: string = '1mo',
     interval: string = '1d'
   ): Promise<HistoricalBar[]> {
-    const cleanSymbol = symbol.trim().toUpperCase();
+    const cleanSymbol = this.normalizeSymbol(symbol);
     const cacheKey = `hist_${cleanSymbol}_${range}_${interval}`;
     const cached = this.getFromCache<HistoricalBar[]>(cacheKey);
     if (cached) return cached;
@@ -145,13 +205,14 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
 
       // Skip null/undefined bars
       if (open != null && high != null && low != null && close != null) {
+        const decimals = close < 1 && close > 0 ? (close < 0.01 ? 6 : 4) : 2;
         bars.push({
           timestamp: timestamps[i] * 1000,
           date: new Date(timestamps[i] * 1000).toISOString(),
-          open: Number(open.toFixed(2)),
-          high: Number(high.toFixed(2)),
-          low: Number(low.toFixed(2)),
-          close: Number(close.toFixed(2)),
+          open: Number(open.toFixed(decimals)),
+          high: Number(high.toFixed(decimals)),
+          low: Number(low.toFixed(decimals)),
+          close: Number(close.toFixed(decimals)),
           volume: Math.round(volume),
         });
       }
@@ -168,7 +229,7 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     const cached = this.getFromCache<SymbolSearchResult[]>(cacheKey);
     if (cached) return cached;
 
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(cleanQuery)}&quotesCount=10&newsCount=0`;
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(cleanQuery)}&quotesCount=15&newsCount=0`;
     const res = await fetch(url, {
       headers: { 'User-Agent': this.userAgent, Accept: 'application/json' },
     });
@@ -181,12 +242,19 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     const quotes = json.quotes || [];
 
     const results: SymbolSearchResult[] = quotes
-      .filter((q: any) => q.symbol && (q.quoteType === 'EQUITY' || q.quoteType === 'ETF'))
+      .filter(
+        (q: any) =>
+          q.symbol &&
+          (q.quoteType === 'EQUITY' ||
+            q.quoteType === 'ETF' ||
+            q.quoteType === 'CRYPTOCURRENCY' ||
+            q.quoteType === 'CURRENCY')
+      )
       .map((q: any) => ({
         symbol: q.symbol,
         name: q.longname || q.shortname || q.symbol,
-        exchange: q.exchDisp || q.exchange || 'US',
-        type: q.typeDisp || q.quoteType || 'Equity',
+        exchange: q.quoteType === 'CRYPTOCURRENCY' ? 'Crypto (24/7)' : (q.exchDisp || q.exchange || 'US'),
+        type: q.quoteType === 'CRYPTOCURRENCY' ? 'Cryptocurrency' : (q.typeDisp || q.quoteType || 'Equity'),
         sector: q.sector,
         industry: q.industry,
       }));
@@ -223,7 +291,7 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     return {
       isOpen,
       session,
-      exchange: 'US Markets (NYSE / NASDAQ)',
+      exchange: 'US Markets (NYSE / NASDAQ) & Crypto 24/7',
       timezone: 'America/New_York (EDT/EST)',
       localTime: nyTimeString,
       nextOpen: !isOpen ? '09:30 AM EDT' : undefined,
@@ -231,13 +299,8 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     };
   }
 
-  async getNews(symbol?: string, limit: number = 10): Promise<NewsItem[]> {
-    const target = symbol ? symbol.trim().toUpperCase() : 'stock market';
-    const cacheKey = `news_${target}_${limit}`;
-    const cached = this.getFromCache<NewsItem[]>(cacheKey);
-    if (cached) return cached;
-
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(target)}&newsCount=${limit}&quotesCount=0`;
+  private async fetchYahooNewsRaw(query: string, limit: number, associatedSymbol?: string): Promise<NewsItem[]> {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&newsCount=${limit}&quotesCount=0`;
     const res = await fetch(url, {
       headers: { 'User-Agent': this.userAgent, Accept: 'application/json' },
     });
@@ -249,14 +312,13 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
     const json: any = await res.json();
     const newsArray = json.news || [];
 
-    const items: NewsItem[] = newsArray.map((item: any) => {
-      // Analyze headline sentiment based on financial keywords
+    return newsArray.map((item: any) => {
       const title = item.title || '';
       const { sentiment, score } = analyzeTextSentiment(title);
 
       return {
         id: item.uuid || `${item.providerPublishTime}_${Math.random()}`,
-        symbol: symbol ? symbol.toUpperCase() : item.relatedTickers?.[0],
+        symbol: associatedSymbol || item.relatedTickers?.[0] || 'GLOBAL',
         headline: title,
         source: item.publisher || 'Financial Wire',
         url: item.link || '',
@@ -266,6 +328,55 @@ export class YahooMarketDataProvider implements IMarketDataProvider, INewsProvid
         relatedSymbols: item.relatedTickers || [],
       };
     });
+  }
+
+  async getNews(symbol?: string, limit: number = 10): Promise<NewsItem[]> {
+    const rawSymbol = symbol ? symbol.trim().toUpperCase() : '';
+    const cacheKey = `news_${rawSymbol || 'market'}_${limit}`;
+    const cached = this.getFromCache<NewsItem[]>(cacheKey);
+    if (cached) return cached;
+
+    if (!rawSymbol) {
+      const items = await this.fetchYahooNewsRaw('stock market finance', limit);
+      this.setCache(cacheKey, items, 120);
+      return items;
+    }
+
+    const isIndian = rawSymbol.endsWith('.NS') || rawSymbol.endsWith('.BO');
+    const isCrypto = this.isCryptoSymbol(rawSymbol);
+
+    let queryTarget = rawSymbol;
+    if (isIndian) {
+      queryTarget = rawSymbol.replace(/\.(NS|BO)$/i, '');
+    } else if (isCrypto) {
+      queryTarget = rawSymbol.replace('-USD', '') + ' crypto';
+    }
+
+    let items = await this.fetchYahooNewsRaw(queryTarget, limit, rawSymbol);
+
+    // Fallback 1: If 0 items for Indian stock, try quote company name or Indian market wire
+    if (items.length === 0 && isIndian) {
+      try {
+        const quote = await this.getQuote(rawSymbol);
+        if (quote?.name && quote.name !== rawSymbol) {
+          items = await this.fetchYahooNewsRaw(quote.name, limit, rawSymbol);
+        }
+      } catch {}
+
+      if (items.length === 0) {
+        items = await this.fetchYahooNewsRaw(`${queryTarget} India stock market`, limit, rawSymbol);
+      }
+    }
+
+    // Fallback 2: If 0 items for crypto, try broader crypto search
+    if (items.length === 0 && isCrypto) {
+      items = await this.fetchYahooNewsRaw('cryptocurrency Bitcoin market', limit, rawSymbol);
+    }
+
+    // Fallback 3: General financial market news fallback
+    if (items.length === 0) {
+      items = await this.fetchYahooNewsRaw('stock market', limit, rawSymbol);
+    }
 
     this.setCache(cacheKey, items, 120); // 2 min TTL
     return items;

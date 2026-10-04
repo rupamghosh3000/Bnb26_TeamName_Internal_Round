@@ -70,6 +70,158 @@ router.get('/overview', async (req, res, next) => {
   }
 });
 
+// Top cryptocurrency universe definition with metadata
+const CRYPTO_UNIVERSE = [
+  { symbol: 'BTC-USD', name: 'Bitcoin', category: 'Layer 1', icon: '₿' },
+  { symbol: 'ETH-USD', name: 'Ethereum', category: 'Layer 1', icon: 'Ξ' },
+  { symbol: 'SOL-USD', name: 'Solana', category: 'Layer 1', icon: '◎' },
+  { symbol: 'BNB-USD', name: 'BNB', category: 'Layer 1', icon: '🔶' },
+  { symbol: 'XRP-USD', name: 'XRP', category: 'Payment', icon: '✕' },
+  { symbol: 'DOGE-USD', name: 'Dogecoin', category: 'Meme', icon: 'Ð' },
+  { symbol: 'ADA-USD', name: 'Cardano', category: 'Layer 1', icon: '₳' },
+  { symbol: 'AVAX-USD', name: 'Avalanche', category: 'Layer 1', icon: '🔺' },
+  { symbol: 'LINK-USD', name: 'Chainlink', category: 'DeFi', icon: '⬡' },
+  { symbol: 'POL-USD', name: 'Polygon', category: 'Layer 2', icon: '⬢' },
+  { symbol: 'SHIB-USD', name: 'Shiba Inu', category: 'Meme', icon: '🐕' },
+  { symbol: 'NEAR-USD', name: 'Near Protocol', category: 'Layer 1', icon: 'Ⓝ' },
+  { symbol: 'SUI-USD', name: 'Sui', category: 'Layer 1', icon: '💧' },
+  { symbol: 'DOT-USD', name: 'Polkadot', category: 'Layer 1', icon: '●' },
+  { symbol: 'UNI-USD', name: 'Uniswap', category: 'DeFi', icon: '🦄' },
+  { symbol: 'LTC-USD', name: 'Litecoin', category: 'Payment', icon: 'Ł' },
+  { symbol: 'PEPE-USD', name: 'Pepe', category: 'Meme', icon: '🐸' },
+  { symbol: 'BCH-USD', name: 'Bitcoin Cash', category: 'Payment', icon: 'Ƀ' },
+];
+
+// Cryptocurrency Market Overview & Quotes
+router.get('/crypto', async (req, res, next) => {
+  try {
+    const category = req.query.category as string;
+    const targetUniverse = category && category !== 'All'
+      ? CRYPTO_UNIVERSE.filter((c) => c.category.toLowerCase() === category.toLowerCase())
+      : CRYPTO_UNIVERSE;
+
+    const quotesWithMeta = await Promise.all(
+      targetUniverse.map(async (coin) => {
+        try {
+          const q = await marketProvider.getQuote(coin.symbol);
+          return {
+            ...q,
+            name: coin.name || q.name,
+            category: coin.category,
+            icon: coin.icon,
+            baseTicker: coin.symbol.replace('-USD', ''),
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    const validQuotes = quotesWithMeta.filter((q): q is NonNullable<typeof q> => q !== null);
+    res.json(validQuotes);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Crypto Market Global Overview & Live Intel
+router.get('/crypto/overview', async (req, res, next) => {
+  try {
+    const [quotes, news, forex] = await Promise.all([
+      Promise.all(
+        CRYPTO_UNIVERSE.map(async (coin) => {
+          try {
+            const q = await marketProvider.getQuote(coin.symbol);
+            return {
+              ...q,
+              name: coin.name || q.name,
+              category: coin.category,
+              icon: coin.icon,
+              baseTicker: coin.symbol.replace('-USD', ''),
+            };
+          } catch {
+            return null;
+          }
+        })
+      ),
+      newsProvider.getNews('crypto', 8),
+      marketProvider.getQuote('USDINR=X').catch(() => null),
+    ]);
+
+    const validQuotes = quotes.filter((q): q is NonNullable<typeof q> => q !== null);
+
+    // Compute top gainers & losers
+    const sorted = [...validQuotes].sort((a, b) => b.changePercent - a.changePercent);
+    const topGainers = sorted.slice(0, 4);
+    const topLosers = [...sorted].reverse().slice(0, 4);
+
+    // Compute aggregate 24h volume
+    const totalVolumeUSD = validQuotes.reduce((acc, q) => acc + (q.volume || 0), 0);
+
+    // Approximate BTC & ETH dominance from major universe market share
+    const btcQuote = validQuotes.find((q) => q.symbol === 'BTC-USD');
+    const ethQuote = validQuotes.find((q) => q.symbol === 'ETH-USD');
+    const solQuote = validQuotes.find((q) => q.symbol === 'SOL-USD');
+
+    // Calculate sentiment from news
+    let bullish = 0;
+    let bearish = 0;
+    let neutral = 0;
+    news.forEach((n) => {
+      if (n.sentiment === 'BULLISH') bullish++;
+      else if (n.sentiment === 'BEARISH') bearish++;
+      else neutral++;
+    });
+
+    const sentimentScore =
+      news.length > 0
+        ? Math.round(
+            ((bullish * 100 + neutral * 50) / (news.length * 100)) * 100
+          )
+        : 65;
+
+    let sentimentLabel = 'Neutral';
+    if (sentimentScore >= 75) sentimentLabel = 'Extreme Greed';
+    else if (sentimentScore >= 60) sentimentLabel = 'Greed';
+    else if (sentimentScore <= 25) sentimentLabel = 'Extreme Fear';
+    else if (sentimentScore <= 40) sentimentLabel = 'Fear';
+
+    res.json({
+      status: {
+        isOpen: true,
+        session: '24/7 LIVE',
+        exchange: 'Global Decentralized Crypto Markets (24/7/365)',
+        timezone: 'UTC',
+      },
+      globalMetrics: {
+        sentimentScore,
+        sentimentLabel,
+        totalTracked: validQuotes.length,
+        btcPrice: btcQuote?.price || 0,
+        btcChange: btcQuote?.changePercent || 0,
+        ethPrice: ethQuote?.price || 0,
+        ethChange: ethQuote?.changePercent || 0,
+        solPrice: solQuote?.price || 0,
+        solChange: solQuote?.changePercent || 0,
+        totalVolumeUSD,
+        usdInrRate: forex?.price || 84.5,
+      },
+      topGainers,
+      topLosers,
+      quotes: validQuotes,
+      news,
+      sentimentDistribution: {
+        bullish,
+        bearish,
+        neutral,
+        total: news.length,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Forex USD to INR live rate
 router.get('/forex/usd-inr', async (req, res) => {
   try {

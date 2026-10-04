@@ -16,6 +16,7 @@ import {
   BookOpen,
   Bell,
   ArrowRight,
+  Coins,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -77,6 +78,7 @@ export const Navbar: React.FC<{ onOpenQuickTrade?: () => void }> = ({ onOpenQuic
   const primaryNavLinks = [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Markets', path: '/markets' },
+    { label: 'Crypto', path: '/crypto', isCrypto: true },
     { label: 'Trade', path: '/trade' },
     { label: 'Portfolio', path: '/portfolio' },
     { label: 'AI Analyst', path: '/ai', isSpecial: true },
@@ -184,6 +186,9 @@ export const Navbar: React.FC<{ onOpenQuickTrade?: () => void }> = ({ onOpenQuic
                           isActive ? 'text-white' : 'text-brand-primary animate-pulse'
                         }`}
                       />
+                    )}
+                    {link.isCrypto && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     )}
                     <span>{link.label}</span>
                   </Link>

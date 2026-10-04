@@ -66,6 +66,9 @@ class ApiClient {
     getStatus: () => this.request<any>('/markets/status'),
     getOverview: () => this.request<any>('/markets/overview'),
     getForexRate: () => this.request<{ base: string; target: string; rate: number; changePercent?: number }>('/markets/forex/usd-inr'),
+    getCrypto: (category?: string) =>
+      this.request<any[]>(category ? `/markets/crypto?category=${encodeURIComponent(category)}` : '/markets/crypto'),
+    getCryptoOverview: () => this.request<any>('/markets/crypto/overview'),
   };
 
   // Trading & Orders

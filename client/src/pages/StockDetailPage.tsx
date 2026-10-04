@@ -362,40 +362,50 @@ export const StockDetailPage: React.FC<{ onOpenQuickTrade: (symbol: string) => v
           </div>
 
           <div className="space-y-3">
-            {news.map((item) => (
-              <div
-                key={item.id}
-                className="p-4 rounded-2xl bg-slate-50/60 border border-slate-100 hover:border-brand-lavender hover:bg-slate-50 transition-all space-y-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-500">{item.source}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-[11px] text-slate-400">
-                      {new Date(item.publishedAt).toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                  <SentimentBadge sentiment={item.sentiment} score={item.sentimentScore} />
-                </div>
-
-                <h4 className="text-sm font-bold text-slate-900 leading-snug">
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-brand-primary flex items-center gap-1.5"
-                  >
-                    <span>{item.headline}</span>
-                    <ExternalLink className="w-3.5 h-3.5 opacity-40 flex-shrink-0" />
-                  </a>
-                </h4>
+            {news.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-slate-50/60 border border-slate-100 text-center space-y-2">
+                <Info className="w-6 h-6 text-slate-400 mx-auto" />
+                <div className="text-xs font-bold text-slate-700">No Direct Financial Headlines Located</div>
+                <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                  Recent coverage for this security may be quiet or indexed under parent entity filings.
+                </p>
               </div>
-            ))}
+            ) : (
+              news.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-2xl bg-slate-50/60 border border-slate-100 hover:border-brand-lavender hover:bg-slate-50 transition-all space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-500">{item.source}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-[11px] text-slate-400">
+                        {new Date(item.publishedAt).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <SentimentBadge sentiment={item.sentiment} score={item.sentimentScore} />
+                  </div>
+
+                  <h4 className="text-sm font-bold text-slate-900 leading-snug">
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-brand-primary flex items-center gap-1.5"
+                    >
+                      <span>{item.headline}</span>
+                      <ExternalLink className="w-3.5 h-3.5 opacity-40 flex-shrink-0" />
+                    </a>
+                  </h4>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

@@ -11,6 +11,7 @@ import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MarketsPage } from './pages/MarketsPage';
+import { CryptoPage } from './pages/CryptoPage';
 import { StockDetailPage } from './pages/StockDetailPage';
 import { TradePage } from './pages/TradePage';
 import { PortfolioPage } from './pages/PortfolioPage';
@@ -70,6 +71,10 @@ const MainLayout: React.FC = () => {
           <Route
             path="/markets"
             element={<MarketsPage onOpenQuickTrade={openQuickTrade} />}
+          />
+          <Route
+            path="/crypto"
+            element={<CryptoPage onOpenQuickTrade={openQuickTrade} />}
           />
           <Route
             path="/markets/:symbol"

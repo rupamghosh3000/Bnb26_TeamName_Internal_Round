@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, TrendingUp, TrendingDown, ArrowRight, Zap, RefreshCw } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, ArrowRight, Zap, RefreshCw, Coins } from 'lucide-react';
 import { FreshnessBadge } from '../components/common/Badge';
 import { CurrencyConverterWidget } from '../components/common/CurrencyConverterWidget';
 import { useCurrency } from '../context/CurrencyContext';
@@ -10,6 +10,7 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
   onOpenQuickTrade,
 }) => {
   const { formatAmount, formatStockPrice } = useCurrency();
+  const [marketFilter, setMarketFilter] = useState<'ALL' | 'US' | 'INDIA' | 'CRYPTO'>('ALL');
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [popularQuotes, setPopularQuotes] = useState<any[]>([]);
@@ -18,6 +19,7 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
   const symbols = [
     'AAPL', 'NVDA', 'MSFT', 'TSLA', 'AMZN', 'GOOGL', 'META',
     'RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS',
+    'BTC-USD', 'ETH-USD', 'SOL-USD', 'DOGE-USD',
     'SPY', 'QQQ'
   ];
 
@@ -56,6 +58,20 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
     return () => clearTimeout(timer);
   }, [search]);
 
+  const filteredQuotes = popularQuotes.filter((q) => {
+    const sym = q.symbol.toUpperCase();
+    if (marketFilter === 'US') {
+      return !sym.endsWith('.NS') && !sym.endsWith('.BO') && !sym.endsWith('-USD');
+    }
+    if (marketFilter === 'INDIA') {
+      return sym.endsWith('.NS') || sym.endsWith('.BO');
+    }
+    if (marketFilter === 'CRYPTO') {
+      return sym.endsWith('-USD') || q.exchange?.toLowerCase().includes('crypto');
+    }
+    return true;
+  });
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-8">
       {/* Header */}
@@ -65,17 +81,27 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
             Markets Universe
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Real market prices, verified liquidity metrics, and financial asset search.
+            Real market prices across US Equities, Indian Equities (NSE/BSE), and 24/7 Cryptocurrency Markets.
           </p>
         </div>
 
-        <button
-          onClick={fetchQuotes}
-          className="self-start md:self-auto flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-soft"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Live Quotes</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/crypto"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold shadow-sm transition-all"
+          >
+            <Coins className="w-3.5 h-3.5" />
+            <span>24/7 Crypto Hub</span>
+          </Link>
+
+          <button
+            onClick={fetchQuotes}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-soft"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh Live Quotes</span>
+          </button>
+        </div>
       </div>
 
       {/* Real-time Symbol Search Bar */}
@@ -84,7 +110,7 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
           <Search className="w-5 h-5 text-brand-primary absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search equities by symbol or name (e.g. Apple, NVDA, Microsoft)..."
+            placeholder="Search equities & crypto by symbol or name (e.g. Apple, Bitcoin, Reliance, NVDA, SOL)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-glow outline-none text-sm text-slate-900 bg-white"
@@ -115,17 +141,39 @@ export const MarketsPage: React.FC<{ onOpenQuickTrade: (symbol: string) => void 
         )}
       </div>
 
+      {/* Market Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+        {[
+          { id: 'ALL', label: 'All Markets' },
+          { id: 'US', label: 'US Equities (NYSE / NASDAQ)' },
+          { id: 'INDIA', label: 'Indian Equities (NSE / BSE)' },
+          { id: 'CRYPTO', label: '24/7 Cryptocurrency' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setMarketFilter(tab.id as any)}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 ${
+              marketFilter === tab.id
+                ? 'bg-brand-deep text-white shadow-sm'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Currency Converter & Rupee Calculator */}
       <CurrencyConverterWidget />
 
       {/* Grid of Monitored Assets */}
       <div>
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
-          Core Monitored Universe
+          Monitored Universe ({filteredQuotes.length} Assets)
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {popularQuotes.map((q) => {
+          {filteredQuotes.map((q) => {
             const isUp = q.change >= 0;
             return (
               <div
